@@ -1,0 +1,13 @@
+/.apt_generated/
+target
+.settings
+.classpath
+.project
+.checkstyle
+.springBeans
+*.iml
+*.ipr
+*.iws
+.DS_Store
+.idea
+credentials.properties
