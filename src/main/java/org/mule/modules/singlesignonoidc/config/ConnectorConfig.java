@@ -1,6 +1,7 @@
 package org.mule.modules.singlesignonoidc.config;
 
 import org.mule.api.annotations.components.Configuration;
+import org.mule.api.annotations.display.FriendlyName;
 import org.mule.api.annotations.Configurable;
 import org.mule.api.annotations.param.Default;
 
@@ -11,7 +12,8 @@ public class ConnectorConfig {
      * SSO Server URI
      */
     @Configurable
-    @Default("http://localhost:8080")
+    @FriendlyName("SSO base path")
+    @Default("http://localhost")
     private String ssoBasePath;
 
 	public String getSsoBasePath() {
@@ -21,21 +23,53 @@ public class ConnectorConfig {
 	public void setSsoBasePath(String ssoBasePath) {
 		this.ssoBasePath = ssoBasePath;
 	}
-    
 	
 	/**
-	 * SSO token validation endpoint
-	 */
-    @Configurable
-    @Default("/auth/realms/master/tokens/validate")
-    private String tokenValidationEndpoint;
-
-	public String getTokenValidationEndpoint() {
-		return tokenValidationEndpoint;
+     * SSO Server port
+     */
+	@Configurable
+	@FriendlyName("SSO port number")
+	@Default("8080")
+	private int ssoPort;
+	
+	public int getSsoPort() {
+		return ssoPort;
 	}
 
-	public void setTokenValidationEndpoint(String tokenValidationEndpoint) {
-		this.tokenValidationEndpoint = tokenValidationEndpoint;
+	public void setSsoPort(int ssoPort) {
+		this.ssoPort = ssoPort;
+	}
+
+	/**
+	 * Enables or disables token storage
+	 */
+	@Configurable
+	@FriendlyName("Token storage")
+	@Default("false")
+	private boolean tokenStorage;
+	
+	public boolean isTokenStorage() {
+		return tokenStorage;
+	}
+
+	public void setTokenStorage(boolean tokenStorage) {
+		this.tokenStorage = tokenStorage;
+	}
+
+	/**
+	 * Token introspection endpoint
+	 */
+    @Configurable
+    @FriendlyName("Token-Introspection endpoint")
+    @Default("/auth/realms/master/tokens/validate")
+    private String tokenIntrospectionEndpoint;
+
+	public String getTokenIntrospectionEndpoint() {
+		return tokenIntrospectionEndpoint;
+	}
+
+	public void setTokenIntrospectionEndpoint(String tokenIntrospectionEndpoint) {
+		this.tokenIntrospectionEndpoint = tokenIntrospectionEndpoint;
 	}
     
     

@@ -18,12 +18,12 @@ public class OpenIDConnectClient {
 	public OpenIDConnectClient(SingleSignOnOIDCConnector connector) {
 		this.connector = connector;
 		this.client = ClientBuilder.newClient();
-		this.ssoTarget = client.target(this.connector.getConfig().getSsoBasePath());
+		this.ssoTarget = client.target(this.connector.getConfig().getSsoBasePath() + ":" + this.connector.getConfig().getSsoPort());
 	}
 	
 	public void onlineTokenValidation(String token) {
 		WebTarget target = ssoTarget
-				.path(connector.getConfig().getTokenValidationEndpoint())
+				.path(connector.getConfig().getTokenIntrospectionEndpoint())
 				.queryParam("access_token", token);
 		Invocation.Builder invocationBuilder = target.request(MediaType.APPLICATION_JSON);
 		Response response = invocationBuilder.get();
