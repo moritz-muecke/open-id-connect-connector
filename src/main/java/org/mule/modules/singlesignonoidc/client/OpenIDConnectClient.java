@@ -18,7 +18,8 @@ public class OpenIDConnectClient {
 	public OpenIDConnectClient(SingleSignOnOIDCConnector connector) {
 		this.connector = connector;
 		this.client = ClientBuilder.newClient();
-		this.ssoTarget = client.target(this.connector.getConfig().getSsoBasePath() + ":" + this.connector.getConfig().getSsoPort());
+		String ssoUrl = connector.getConfig().getSsoUri() + ":" + connector.getConfig().getSsoPort() + connector.getConfig().getSsoBasePath();
+		this.ssoTarget = client.target(ssoUrl);
 	}
 	
 	public void onlineTokenValidation(String token) {
