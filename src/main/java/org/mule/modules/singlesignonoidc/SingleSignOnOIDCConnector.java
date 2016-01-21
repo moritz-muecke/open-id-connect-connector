@@ -1,22 +1,18 @@
 package org.mule.modules.singlesignonoidc;
 
 import java.util.Map;
-
-import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.HttpHeaders;
-
-import org.apache.cxf.common.util.ReflectionInvokationHandler.Optional;
-import org.mule.api.MuleMessage;
+import org.keycloak.common.VerificationException;
 import org.mule.api.annotations.Config;
-import org.mule.api.annotations.Configurable;
 import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.Processor;
 import org.mule.api.callback.SourceCallback;
-import org.mule.api.MuleEvent;
+import org.mule.api.MuleMessage;
 import org.mule.api.annotations.lifecycle.Start;
 import org.mule.api.annotations.param.InboundHeaders;
 import org.mule.modules.singlesignonoidc.client.OpenIDConnectClient;
 import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
+import org.mule.modules.singlesignonoidc.exception.HeaderFormatException;
 
 @Connector(name="oidc-token-validator", friendlyName="OIDCTokenValidator")
 public class SingleSignOnOIDCConnector {
@@ -28,28 +24,46 @@ public class SingleSignOnOIDCConnector {
     
     @Start
     public void init() {
-    	this.client = new OpenIDConnectClient(this);
+    	config.buildSsoUri();
+    	client = new OpenIDConnectClient(config);
     }
-   
+    
     @Processor(intercepting = true)
-    public Object redirectTest(SourceCallback callback, MuleEvent muleEvent, @Optional String token) throws Exception{
-    	if (token.length() > 1) {
-    		muleEvent.getMessage().setOutboundProperty("http.status", 200);
-    		return callback.process(muleEvent.getMessage().getPayload());
-    	} else {
-    		muleEvent.getMessage().setOutboundProperty("http.status", 302);
-    		return muleEvent.getMessage().getPayload();
-    	}
+    public Object onlineTokenValidation(SourceCallback callback, MuleMessage muleMessage, @InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, String introspectionEndpoint) {
+    	config.buildIntrospectionUri(introspectionEndpoint);
+    	try {
+			client.validateToken(headers.get(HttpHeaders.AUTHORIZATION), true);
+			return callback.process(muleMessage.getPayload());
+		} catch (HeaderFormatException e) {
+			muleMessage.setOutboundProperty("http.status", 400);
+			muleMessage.setPayload(e.getMessage());	
+			return muleMessage.getPayload();
+		} catch (Exception e) {
+			muleMessage.setOutboundProperty("http.status", 500);
+			muleMessage.setPayload(e.getMessage());	
+			return muleMessage.getPayload();
+		}
     }
     
-    @Processor
-    public void onlineTokenValidation(@InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, String introspectionEndpoint) {
-    	client.onlineTokenValidation(headers.get(HttpHeaders.AUTHORIZATION));
-    }
-    
-    @Processor
-    public void localTokenValidation(@InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers) {
-    	
+    @Processor(intercepting = true)
+    public Object localTokenValidation(SourceCallback callback, MuleMessage muleMessage, @InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers) {
+    	try {
+    		System.out.println(headers.toString());
+			client.validateToken(headers.get(HttpHeaders.AUTHORIZATION), false);
+			return callback.process(muleMessage.getPayload());
+		} catch (HeaderFormatException e) {
+			muleMessage.setOutboundProperty("http.status", 400);
+			muleMessage.setPayload(e.getMessage());	
+			return muleMessage.getPayload();
+		} catch (VerificationException e) {
+			muleMessage.setOutboundProperty("http.status", 401);
+			muleMessage.setPayload(e.getMessage());	
+			return muleMessage.getPayload();
+		} catch (Exception e) {
+			muleMessage.setOutboundProperty("http.status", 500);
+			muleMessage.setPayload(e.getMessage());	
+			return muleMessage.getPayload();
+		}
     }
     
     public ConnectorConfig getConfig() {

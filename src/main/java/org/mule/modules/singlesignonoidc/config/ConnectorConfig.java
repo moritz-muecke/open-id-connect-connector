@@ -1,42 +1,31 @@
 package org.mule.modules.singlesignonoidc.config;
 
+import java.net.URI;
+
+import javax.ws.rs.core.UriBuilder;
+
 import org.mule.api.annotations.components.Configuration;
 import org.mule.api.annotations.display.FriendlyName;
-import org.mule.api.annotations.display.Placement;
-import org.mule.api.annotations.display.Summary;
 import org.mule.api.annotations.Configurable;
 import org.mule.api.annotations.param.Default;
-import org.mule.extension.annotations.param.Optional;
 
 @Configuration(friendlyName = "Configuration")
 public class ConnectorConfig {
-
-	@Configurable
-	@Summary("Main file documentation explaining what the impex file contains.")
-	@Placement(tab = "Details", order = 1)
-	@Optional
-	private String TestString;
 	
+	private URI introspectionUri;
+	private URI ssoUri;
 	
-    public String getTestString() {
-		return TestString;
-	}
-
-	public void setTestString(String testString) {
-		TestString = testString;
-	}
-
 	@Configurable
-    @FriendlyName("SSO URI")
+    @FriendlyName("SSO Path")
     @Default("http://localhost")
-	private String ssoUri;
+	private String ssoPath;
     
-	public String getSsoUri() {
-		return ssoUri;
+	public String getSsoPath() {
+		return ssoPath;
 	}
 
-	public void setSsoUri(String ssoUri) {
-		this.ssoUri = ssoUri;
+	public void setSsoPath(String ssoPath) {
+		this.ssoPath = ssoPath;
 	}
 
 	/**
@@ -56,35 +45,67 @@ public class ConnectorConfig {
 	}
 
 	/**
-     * SSO OIDC base path
+     * SSO OIDC endpoint
      */
     @Configurable
-    @FriendlyName("SSO base path")
-    @Default("/auth")
-    private String ssoBasePath;
+    @FriendlyName("SSO issuer endpoint")
+    @Default("/auth/realms/master")
+    private String ssoIssuerEndpoint;
 
-	public String getSsoBasePath() {
-		return ssoBasePath;
+	public String getSsoIssuerEndpoint() {
+		return ssoIssuerEndpoint;
 	}
 	
-	public void setSsoBasePath(String ssoBasePath) {
-		this.ssoBasePath = ssoBasePath;
+	public void setSsoIssuerEndpoint(String ssoIssuerEndpoint) {
+		this.ssoIssuerEndpoint = ssoIssuerEndpoint;
 	}
 	
 	/**
-	 * Enables or disables token storage
-	 */
-	@Configurable
-	@FriendlyName("Token storage")
-	@Default("false")
-	private boolean tokenStorage;
+     * SSO puplic key
+     */
+    @Configurable
+    @FriendlyName("SSO puplic key")
+    private String ssoPublicKey;
 	
-	public boolean isTokenStorage() {
-		return tokenStorage;
+	public String getSsoPublicKey() {
+		return ssoPublicKey;
 	}
 
-	public void setTokenStorage(boolean tokenStorage) {
-		this.tokenStorage = tokenStorage;
+	public void setSsoPublicKey(String ssoPublicKey) {
+		this.ssoPublicKey = ssoPublicKey;
+	}
+
+	/**
+	 * Enables or disables OpenID Provider discovery
+	 */
+	@Configurable
+	@FriendlyName("OpenID Provider discovery")
+	@Default("false")
+	private boolean opDiscovery;
+	
+	public boolean isOpDiscovery() {
+		return opDiscovery;
+	}
+
+	public void setOpDiscovery(boolean opDiscovery) {
+		this.opDiscovery = opDiscovery;
+	}
+	
+	
+	/**
+	 * Enables or disables Open ID Connect Authorization Code Flow
+	 */
+	@Configurable
+	@FriendlyName("Authorization Code Flow")
+	@Default("false")
+	private boolean authCodeFlow;
+	
+	public boolean isAuthCodeFlow() {
+		return authCodeFlow;
+	}
+
+	public void setAuthCodeFlow(boolean authCodeFlow) {
+		this.authCodeFlow = authCodeFlow;
 	}
 
 	/**
@@ -102,6 +123,29 @@ public class ConnectorConfig {
 	public void setTokenIntrospectionEndpoint(String tokenIntrospectionEndpoint) {
 		this.tokenIntrospectionEndpoint = tokenIntrospectionEndpoint;
 	}
+
+	public void buildSsoUri() {
+		UriBuilder builder = UriBuilder
+				.fromUri(ssoPath)
+				.port(ssoPort)
+				.path(ssoIssuerEndpoint);
+		ssoUri = builder.build();
+	}
+	
+	public void buildIntrospectionUri(String introspectionEndpoint) {
+		UriBuilder builder = UriBuilder
+				.fromUri(ssoUri)
+				.path(introspectionEndpoint);
+		introspectionUri = builder.build();
+	}
+
+	public URI getIntrospectionUri() {
+		return introspectionUri;
+	}
+
+	public URI getSsoUri() {
+		return ssoUri;
+	}
     
-    
+	
 }
