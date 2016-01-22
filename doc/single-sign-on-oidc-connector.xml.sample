@@ -1,0 +1,7 @@
+<!-- BEGIN_INCLUDE(oidc-token-validator:local-token-validation) -->
+	<oidc-token-validator:local-token-validation/>
+<!-- END_INCLUDE(oidc-token-validator:local-token-validation) -->
+
+<!-- BEGIN_INCLUDE(oidc-token-validator:online-token-validation) -->
+	<oidc-token-validator:online-token-validation introspectionEndpoint="/introspect" />
+<!-- END_INCLUDE(oidc-token-validator:online-token-validation) -->

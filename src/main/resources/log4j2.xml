@@ -15,5 +15,8 @@
        <Root level="ERROR">
            <AppenderRef ref="STDOUT"/>
        </Root>
+       <Root level="INFO">
+           <AppenderRef ref="STDOUT"/>
+       </Root>
    </Loggers>
 </Configuration>

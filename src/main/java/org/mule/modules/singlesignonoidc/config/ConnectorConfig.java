@@ -1,31 +1,41 @@
 package org.mule.modules.singlesignonoidc.config;
 
 import java.net.URI;
+import java.security.interfaces.RSAPublicKey;
 
 import javax.ws.rs.core.UriBuilder;
 
 import org.mule.api.annotations.components.Configuration;
 import org.mule.api.annotations.display.FriendlyName;
+import org.mule.api.annotations.display.Placement;
 import org.mule.api.annotations.Configurable;
 import org.mule.api.annotations.param.Default;
+import org.mule.api.annotations.param.Optional;
+
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.oauth2.sdk.ParseException;
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 
 @Configuration(friendlyName = "Configuration")
 public class ConnectorConfig {
+	
+	private OIDCProviderMetadata providerMetadata;
+	private RSAPublicKey rsaPublicKey;
 	
 	private URI introspectionUri;
 	private URI ssoUri;
 	
 	@Configurable
-    @FriendlyName("SSO Path")
+    @FriendlyName("SSO Server URL")
     @Default("http://localhost")
-	private String ssoPath;
+	private String ssoServerUrl;
     
-	public String getSsoPath() {
-		return ssoPath;
+	public String getSsoServerUrl() {
+		return ssoServerUrl;
 	}
 
-	public void setSsoPath(String ssoPath) {
-		this.ssoPath = ssoPath;
+	public void setSsoServerUrl(String ssoServerUrl) {
+		this.ssoServerUrl = ssoServerUrl;
 	}
 
 	/**
@@ -61,72 +71,95 @@ public class ConnectorConfig {
 	}
 	
 	/**
-     * SSO puplic key
-     */
-    @Configurable
-    @FriendlyName("SSO puplic key")
-    private String ssoPublicKey;
-	
-	public String getSsoPublicKey() {
-		return ssoPublicKey;
-	}
-
-	public void setSsoPublicKey(String ssoPublicKey) {
-		this.ssoPublicKey = ssoPublicKey;
-	}
-
-	/**
-	 * Enables or disables OpenID Provider discovery
+	 * Endpoint to retrieve OP configuration
 	 */
 	@Configurable
-	@FriendlyName("OpenID Provider discovery")
-	@Default("false")
-	private boolean opDiscovery;
+	@FriendlyName("OpenID Configuration discovery endpoint")
+	@Default("/.well-known/openid-configuration")
+	private String configDiscoveryEndpoint;
 	
-	public boolean isOpDiscovery() {
-		return opDiscovery;
+	
+	public String getConfigDiscoveryEndpoint() {
+		return configDiscoveryEndpoint;
 	}
 
-	public void setOpDiscovery(boolean opDiscovery) {
-		this.opDiscovery = opDiscovery;
+	public void setConfigDiscoveryEndpoint(String configDiscoveryEndpoint) {
+		this.configDiscoveryEndpoint = configDiscoveryEndpoint;
 	}
 	
-	
 	/**
-	 * Enables or disables Open ID Connect Authorization Code Flow
+	 * Enables or disables OpenID Configuration discovery
 	 */
 	@Configurable
-	@FriendlyName("Authorization Code Flow")
+	@FriendlyName("OpenID Configuration discovery")
 	@Default("false")
-	private boolean authCodeFlow;
+	private boolean configDiscovery;
 	
-	public boolean isAuthCodeFlow() {
-		return authCodeFlow;
+	public boolean isConfigDiscovery() {
+		return configDiscovery;
 	}
 
-	public void setAuthCodeFlow(boolean authCodeFlow) {
-		this.authCodeFlow = authCodeFlow;
+	public void setConfigDiscovery(boolean configDiscovery) {
+		this.configDiscovery = configDiscovery;
+	}
+	
+	/**
+	 *Authorization endpoint. HINT: This is a optional parameter if OpenID Configuration discovery is active
+	 */
+	@Configurable
+	@Optional
+	@FriendlyName("Authorization endpoint")
+	@Placement(tab="Manual Configuration", group="Endpoints", order = 0)
+    @Default("/protocol/openid-connect/auth")
+	private String authEndpoint;
+	
+	public String getAuthEndpoint() {
+		return authEndpoint;
+	}
+
+	public void setAuthEndpoint(String authEndpoint) {
+		this.authEndpoint = authEndpoint;
+	}
+	
+	/**
+	 *Token endpoint. HINT: This is a optional parameter if OpenID Configuration discovery is active
+	 */
+	@Configurable
+	@Optional
+	@FriendlyName("Token endpoint")
+	@Placement(tab="Manual Configuration", group="Endpoints", order = 1)
+    @Default("/protocol/openid-connect/token")
+	private String tokenEndpoint;
+	
+	public String getTokenEndpoint() {
+		return tokenEndpoint;
+	}
+
+	public void setTokenEndpoint(String tokenEndpoint) {
+		this.tokenEndpoint = tokenEndpoint;
 	}
 
 	/**
-	 * Token introspection endpoint
+	 * JWK-Set endpoint. HINT: This is a optional parameter if OpenID Configuration discovery is active
 	 */
-    @Configurable
-    @FriendlyName("Token-Introspection endpoint")
-    @Default("/realms/master/tokens/validate")
-    private String tokenIntrospectionEndpoint;
-
-	public String getTokenIntrospectionEndpoint() {
-		return tokenIntrospectionEndpoint;
+	@Configurable
+	@Optional
+	@FriendlyName("JWK-Set endpoint")
+	@Placement(tab="Manual Configuration", group="Endpoints", order = 2)
+    @Default("/protocol/openid-connect/certs")
+    private String jwkSetEndpoint;
+		
+	public String getJwkSetEndpoint() {
+		return jwkSetEndpoint;
 	}
 
-	public void setTokenIntrospectionEndpoint(String tokenIntrospectionEndpoint) {
-		this.tokenIntrospectionEndpoint = tokenIntrospectionEndpoint;
+	public void setJwkSetEndpoint(String jwkSetEndpoint) {
+		this.jwkSetEndpoint = jwkSetEndpoint;
 	}
 
 	public void buildSsoUri() {
 		UriBuilder builder = UriBuilder
-				.fromUri(ssoPath)
+				.fromUri(ssoServerUrl)
 				.port(ssoPort)
 				.path(ssoIssuerEndpoint);
 		ssoUri = builder.build();
@@ -138,14 +171,26 @@ public class ConnectorConfig {
 				.path(introspectionEndpoint);
 		introspectionUri = builder.build();
 	}
+	
+	public void buildProviderMetadata() throws ParseException, JOSEException, java.text.ParseException {
+		if(isConfigDiscovery()) {
+			providerMetadata = OIDCProviderMetadataBuilder.provideMetadataFromServer(ssoUri, configDiscoveryEndpoint);
+		} else providerMetadata = OIDCProviderMetadataBuilder.provideMetadataManually(ssoUri, authEndpoint, tokenEndpoint, jwkSetEndpoint);
+		
+		rsaPublicKey = OIDCProviderMetadataBuilder.providePublicKey(providerMetadata);
+	}
+
+	public OIDCProviderMetadata getProviderMetadata() {
+		return providerMetadata;
+	}
+
+	public RSAPublicKey getRsaPublicKey() {
+		return rsaPublicKey;
+	}
 
 	public URI getIntrospectionUri() {
 		return introspectionUri;
 	}
-
-	public URI getSsoUri() {
-		return ssoUri;
-	}
-    
+	
 	
 }
