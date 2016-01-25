@@ -14,6 +14,11 @@ import org.mule.api.annotations.param.Optional;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.oauth2.sdk.ParseException;
+import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
+import com.nimbusds.oauth2.sdk.auth.ClientSecretPost;
+import com.nimbusds.oauth2.sdk.auth.Secret;
+import com.nimbusds.oauth2.sdk.id.ClientID;
+import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 
 @Configuration(friendlyName = "Configuration")
@@ -21,6 +26,7 @@ public class ConnectorConfig {
 	
 	private OIDCProviderMetadata providerMetadata;
 	private RSAPublicKey rsaPublicKey;
+	private ClientSecretBasic clientSecretBasic;
 	
 	private URI introspectionUri;
 	private URI ssoUri;
@@ -87,6 +93,36 @@ public class ConnectorConfig {
 		this.configDiscoveryEndpoint = configDiscoveryEndpoint;
 	}
 	
+	/**
+	 * Single Sign On Client ID
+	 */
+	@Configurable
+	@FriendlyName("Client ID")
+	private String clientId;
+	
+	public String getClientId() {
+		return clientId;
+	}
+
+	public void setClientId(String clientId) {
+		this.clientId = clientId;
+	}
+	
+	/**
+	 * Single Sign On Client Secret
+	 */
+	@Configurable
+	@FriendlyName("Client Secret")
+	private String clientSecret;
+
+	public String getClientSecret() {
+		return clientSecret;
+	}
+
+	public void setClientSecret(String clientSecret) {
+		this.clientSecret = clientSecret;
+	}
+
 	/**
 	 * Enables or disables OpenID Configuration discovery
 	 */
@@ -177,6 +213,7 @@ public class ConnectorConfig {
 			providerMetadata = OIDCProviderMetadataBuilder.provideMetadataFromServer(ssoUri, configDiscoveryEndpoint);
 		} else providerMetadata = OIDCProviderMetadataBuilder.provideMetadataManually(ssoUri, authEndpoint, tokenEndpoint, jwkSetEndpoint);
 		
+		clientSecretBasic = new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret));
 		rsaPublicKey = OIDCProviderMetadataBuilder.providePublicKey(providerMetadata);
 	}
 
@@ -191,6 +228,12 @@ public class ConnectorConfig {
 	public URI getIntrospectionUri() {
 		return introspectionUri;
 	}
-	
-	
+
+	public ClientSecretBasic getClientSecretBasic() {
+		return clientSecretBasic;
+	}
+
+	public void setClientSecretBasic(ClientSecretBasic clientSecretBasic) {
+		this.clientSecretBasic = clientSecretBasic;
+	}
 }

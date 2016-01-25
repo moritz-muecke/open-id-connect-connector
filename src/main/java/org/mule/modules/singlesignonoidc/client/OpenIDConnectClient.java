@@ -14,17 +14,19 @@ import org.keycloak.common.VerificationException;
 import org.mule.modules.singlesignonoidc.SingleSignOnOIDCConnector;
 import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
 import org.mule.modules.singlesignonoidc.exception.HeaderFormatException;
+import org.mule.modules.singlesignonoidc.exception.TokenIntrospectionException;
 
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.oauth2.sdk.ParseException;
+import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.openid.connect.sdk.validators.AccessTokenValidator;
 
 public class OpenIDConnectClient {
 	
 	private TokenValidator tokenValidator;
 	private ConnectorConfig config;	
-	private static final String BEARER_PREFIX = "Bearer ";
 	
 	public OpenIDConnectClient(ConnectorConfig config) {
 		this.config = config;
@@ -32,21 +34,13 @@ public class OpenIDConnectClient {
 	}
 	
 	public void validateToken(String authHeader, boolean online) 
-			throws HeaderFormatException, VerificationException, ParseException, IOException {
-		String accessToken = extractTokenString(authHeader);
+			throws HeaderFormatException, VerificationException, ParseException, IOException, TokenIntrospectionException, java.text.ParseException, JOSEException {
+		AccessToken token = AccessToken.parse(authHeader);
 		if (online) {
-			tokenValidator.introspectionTokenValidation(authHeader);
+			tokenValidator.introspectionTokenValidation(token);
 		} else {
-			tokenValidator.localTokenValidation(accessToken);
+			tokenValidator.localTokenValidation(token);
 		}
-	}
-	
-	private String extractTokenString(String authHeader) 
-			throws HeaderFormatException {
-		if (authHeader.length() <= BEARER_PREFIX.length() || !authHeader.startsWith(BEARER_PREFIX)) {
-			throw new HeaderFormatException("Authorization header has wrong format");
-		}
-		return authHeader.substring(BEARER_PREFIX.length());
 	}
 }
 
