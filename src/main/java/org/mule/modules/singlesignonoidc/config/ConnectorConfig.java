@@ -2,6 +2,7 @@ package org.mule.modules.singlesignonoidc.config;
 
 import java.net.URI;
 import java.security.interfaces.RSAPublicKey;
+import java.util.List;
 
 import javax.ws.rs.core.UriBuilder;
 
@@ -27,6 +28,8 @@ public class ConnectorConfig {
 	private OIDCProviderMetadata providerMetadata;
 	private RSAPublicKey rsaPublicKey;
 	private ClientSecretBasic clientSecretBasic;
+	private String clientId;
+	private String clientSecret;
 	
 	private URI introspectionUri;
 	private URI ssoUri;
@@ -91,36 +94,6 @@ public class ConnectorConfig {
 
 	public void setConfigDiscoveryEndpoint(String configDiscoveryEndpoint) {
 		this.configDiscoveryEndpoint = configDiscoveryEndpoint;
-	}
-	
-	/**
-	 * Single Sign On Client ID
-	 */
-	@Configurable
-	@FriendlyName("Client ID")
-	private String clientId;
-	
-	public String getClientId() {
-		return clientId;
-	}
-
-	public void setClientId(String clientId) {
-		this.clientId = clientId;
-	}
-	
-	/**
-	 * Single Sign On Client Secret
-	 */
-	@Configurable
-	@FriendlyName("Client Secret")
-	private String clientSecret;
-
-	public String getClientSecret() {
-		return clientSecret;
-	}
-
-	public void setClientSecret(String clientSecret) {
-		this.clientSecret = clientSecret;
 	}
 
 	/**
@@ -212,7 +185,6 @@ public class ConnectorConfig {
 		if(isConfigDiscovery()) {
 			providerMetadata = OIDCProviderMetadataBuilder.provideMetadataFromServer(ssoUri, configDiscoveryEndpoint);
 		} else providerMetadata = OIDCProviderMetadataBuilder.provideMetadataManually(ssoUri, authEndpoint, tokenEndpoint, jwkSetEndpoint);
-		
 		clientSecretBasic = new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret));
 		rsaPublicKey = OIDCProviderMetadataBuilder.providePublicKey(providerMetadata);
 	}
@@ -235,5 +207,25 @@ public class ConnectorConfig {
 
 	public void setClientSecretBasic(ClientSecretBasic clientSecretBasic) {
 		this.clientSecretBasic = clientSecretBasic;
+	}
+
+	public URI getSsoUri() {
+		return ssoUri;
+	}
+
+	public String getClientId() {
+		return clientId;
+	}
+
+	public void setClientId(String clientId) {
+		this.clientId = clientId;
+	}
+
+	public String getClientSecret() {
+		return clientSecret;
+	}
+
+	public void setClientSecret(String clientSecret) {
+		this.clientSecret = clientSecret;
 	}
 }

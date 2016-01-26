@@ -14,7 +14,7 @@ import org.keycloak.common.VerificationException;
 import org.mule.modules.singlesignonoidc.SingleSignOnOIDCConnector;
 import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
 import org.mule.modules.singlesignonoidc.exception.HeaderFormatException;
-import org.mule.modules.singlesignonoidc.exception.TokenIntrospectionException;
+import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
@@ -33,13 +33,11 @@ public class OpenIDConnectClient {
 		this.tokenValidator = new TokenValidator(this.config);
 	}
 	
-	public void validateToken(String authHeader, boolean online) 
-			throws HeaderFormatException, VerificationException, ParseException, IOException, TokenIntrospectionException, java.text.ParseException, JOSEException {
-		AccessToken token = AccessToken.parse(authHeader);
+	public void validateToken(String authHeader, boolean online) throws TokenValidationException {
 		if (online) {
-			tokenValidator.introspectionTokenValidation(token);
+			tokenValidator.introspectionTokenValidation(authHeader);
 		} else {
-			tokenValidator.localTokenValidation(token);
+			tokenValidator.localTokenValidation(authHeader);
 		}
 	}
 }

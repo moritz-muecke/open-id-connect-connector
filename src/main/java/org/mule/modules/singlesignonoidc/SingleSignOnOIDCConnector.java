@@ -5,18 +5,16 @@ import java.util.Map;
 import javax.ws.rs.core.HttpHeaders;
 
 import org.keycloak.common.VerificationException;
+import org.mule.api.MuleMessage;
 import org.mule.api.annotations.Config;
 import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.Processor;
-import org.mule.api.callback.SourceCallback;
-import org.mule.api.MuleMessage;
-import org.mule.api.annotations.display.FriendlyName;
 import org.mule.api.annotations.lifecycle.Start;
 import org.mule.api.annotations.param.InboundHeaders;
+import org.mule.api.callback.SourceCallback;
 import org.mule.modules.singlesignonoidc.client.OpenIDConnectClient;
 import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
-import org.mule.modules.singlesignonoidc.exception.HeaderFormatException;
-import org.mule.modules.singlesignonoidc.exception.TokenIntrospectionException;
+import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.oauth2.sdk.ParseException;
@@ -32,8 +30,8 @@ public class SingleSignOnOIDCConnector {
     @Start
     public void init() throws ParseException, JOSEException, java.text.ParseException {
     	client = new OpenIDConnectClient(config);
-    	config.buildSsoUri();
-		config.buildProviderMetadata();
+    	//config.buildSsoUri();
+		//config.buildProviderMetadata();
     }
     
         
@@ -43,19 +41,21 @@ public class SingleSignOnOIDCConnector {
      * {@sample.xml ../../../doc/single-sign-on-oidc-connector.xml.sample
 	 * oidc-token-validator:online-token-validation}
      * 
-     * @param callback
-     * @param muleMessage
+     * @param callback injected by devkit
+     * @param muleMessage injected by devkit
      * @param headers Authorization header where the bearer token is located
      * @param introspectionEndpoint The path of the introspection endpoint
+     * @param clientID Any Client-ID from the SSO to prevent token scanning attacks
+     * @param clientSecret The Secret of the given Client-ID
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
      */
     @Processor(intercepting = true)
-    public Object onlineTokenValidation(SourceCallback callback, MuleMessage muleMessage, @InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, String introspectionEndpoint) {
+    public Object onlineTokenValidation(SourceCallback callback, MuleMessage muleMessage, @InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, String introspectionEndpoint, String clientID, String clientSecret) {
     	config.buildIntrospectionUri(introspectionEndpoint);
     	try {
 			client.validateToken(headers.get(HttpHeaders.AUTHORIZATION), true);
 			return callback.process(muleMessage.getPayload());
-		} catch (TokenIntrospectionException e) {
+		} catch (VerificationException | TokenValidationException e) {
 			muleMessage.setOutboundProperty("http.status", 401);
 			muleMessage.setPayload(e.getMessage());
 			return muleMessage.getPayload();
@@ -73,8 +73,8 @@ public class SingleSignOnOIDCConnector {
      * {@sample.xml ../../../doc/single-sign-on-oidc-connector.xml.sample
 	 * oidc-token-validator:local-token-validation}
      * 
-     * @param callback
-     * @param muleMessage
+     * @param callback injected by devkit
+     * @param muleMessage injected by devkit
      * @param headers Authorization header where the bearer token is located
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
      */
@@ -83,12 +83,12 @@ public class SingleSignOnOIDCConnector {
     	try {
 			client.validateToken(headers.get(HttpHeaders.AUTHORIZATION), false);
 			return callback.process(muleMessage.getPayload());
-		} catch (VerificationException e) {
+		} catch (VerificationException | TokenValidationException e) {
 			muleMessage.setOutboundProperty("http.status", 401);
 			muleMessage.setPayload(e.getMessage());	
 			return muleMessage.getPayload();
 		} catch (Exception e) {
-			muleMessage.setOutboundProperty("http.status", 500);
+			muleMessage.setOutboundProperty("http.status", 400);
 			muleMessage.setPayload(e.getMessage());	
 			return muleMessage.getPayload();
 		}
@@ -100,8 +100,8 @@ public class SingleSignOnOIDCConnector {
      * {@sample.xml ../../../doc/single-sign-on-oidc-connector.xml.sample
 	 * oidc-token-validator:act-as-relying-party}
      * 
-     * @param callback
-     * @param muleMessage
+     * @param callback injected by devkit
+     * @param muleMessage injected by devkit
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
      */
     @Processor(intercepting = true)
