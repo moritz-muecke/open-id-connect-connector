@@ -26,27 +26,33 @@ import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;
 import com.nimbusds.openid.connect.sdk.SubjectType;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 
-public class OIDCProviderMetadataBuilder {
+public class OIDCProviderMetaDataBuilder {
 	
-	private static Client client = ClientBuilder.newClient();
+	private Client client;
+	private URI providerUri;
 	
-	public static OIDCProviderMetadata provideMetadataFromServer(URI providerURI, String configurationEndpoint) throws ParseException {
-        URI metadataURI = uriBuilder(providerURI, configurationEndpoint);
+	public OIDCProviderMetaDataBuilder(URI providerUri) {
+		this.providerUri = providerUri;
+		client = ClientBuilder.newClient();
+	}
+	
+	public OIDCProviderMetadata provideMetadataFromServer(String configurationEndpoint) throws ParseException {
+        URI metadataURI = uriBuilder(providerUri, configurationEndpoint);
         return OIDCProviderMetadata.parse(requestJsonString(metadataURI));
 	}
 	
-	public static OIDCProviderMetadata provideMetadataManually(URI ssoUri, String authEndpoint, String tokenEndpoint, String jwkSetEndpoint) {
-        Issuer issuer = new Issuer(ssoUri);
+	public OIDCProviderMetadata provideMetadataManually(String authEndpoint, String tokenEndpoint, String jwkSetEndpoint) {
+        Issuer issuer = new Issuer(providerUri);
         List<SubjectType> subjectTypes = new ArrayList<>();
         subjectTypes.add(SubjectType.PUBLIC);
-        OIDCProviderMetadata metaData = new OIDCProviderMetadata(issuer, subjectTypes, uriBuilder(ssoUri, jwkSetEndpoint));
-        metaData.setAuthorizationEndpointURI(uriBuilder(ssoUri, authEndpoint));
-        metaData.setTokenEndpointURI(uriBuilder(ssoUri, tokenEndpoint));
+        OIDCProviderMetadata metaData = new OIDCProviderMetadata(issuer, subjectTypes, uriBuilder(providerUri, jwkSetEndpoint));
+        metaData.setAuthorizationEndpointURI(uriBuilder(providerUri, authEndpoint));
+        metaData.setTokenEndpointURI(uriBuilder(providerUri, tokenEndpoint));
         metaData.applyDefaults();
         return metaData;
 	}
 	
-	public static RSAPublicKey providePublicKey(OIDCProviderMetadata providerMetadata) throws ParseException, JOSEException, java.text.ParseException {
+	public RSAPublicKey providePublicKey(OIDCProviderMetadata providerMetadata) throws ParseException, JOSEException, java.text.ParseException {
 		URI jwkSetUri = providerMetadata.getJWKSetURI();
         String metaDataString = requestJsonString(jwkSetUri);
         // Parse the data as json
@@ -62,12 +68,12 @@ public class OIDCProviderMetadataBuilder {
         return null;
 	}
 	
-	private static URI uriBuilder(URI uri, String path) {
+	private URI uriBuilder(URI uri, String path) {
 		UriBuilder builder = UriBuilder.fromUri(uri).path(path);
         return builder.build();
 	}
 	
-	private static String requestJsonString(URI uri) {
+	private String requestJsonString(URI uri) {
 		WebTarget webTarget = client.target(uri);
         Invocation.Builder invocationBuilder = webTarget.request(MediaType.APPLICATION_JSON_TYPE);
         Response response = invocationBuilder.get();

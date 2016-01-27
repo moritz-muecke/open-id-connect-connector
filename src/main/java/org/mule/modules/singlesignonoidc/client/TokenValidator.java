@@ -3,7 +3,9 @@ package org.mule.modules.singlesignonoidc.client;
 import net.minidev.json.JSONObject;
 
 import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
+import org.mule.modules.singlesignonoidc.config.ProviderMetaData;
 import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
+import org.springframework.jdbc.support.MetaDataAccessException;
 
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
@@ -20,10 +22,10 @@ import com.nimbusds.oauth2.sdk.token.AccessToken;
 
 public class TokenValidator {
 
-	private ConnectorConfig connectorConfig;
+	private ProviderMetaData metaDataConfig;
 
-	public TokenValidator(ConnectorConfig config) {
-		connectorConfig = config;
+	public TokenValidator(ProviderMetaData config) {
+		metaDataConfig = config;
 	}
 
 	public void introspectionTokenValidation(String authHeader)
@@ -32,8 +34,8 @@ public class TokenValidator {
 			AccessToken accessToken = AccessToken.parse(authHeader);
 
 			TokenIntrospectionRequest introspectionRequest = new TokenIntrospectionRequest(
-					connectorConfig.getIntrospectionUri(),
-					connectorConfig.getClientSecretBasic(), accessToken);
+					metaDataConfig.getIntrospectionUri(),
+					metaDataConfig.getClientSecretBasic(), accessToken);
 			HTTPResponse introSpectionHttpResponse = introspectionRequest
 					.toHTTPRequest().send();
 
@@ -67,8 +69,8 @@ public class TokenValidator {
 			AccessToken accessToken = AccessToken.parse(authHeader);
 			SignedJWT jwt = SignedJWT.parse(accessToken.getValue());
 			JWSVerifier verifier = new RSASSAVerifier(
-					connectorConfig.getRsaPublicKey());
-			JWTClaimsSet claimSet = SignedTokenVerifier.verifyToken(verifier, jwt, connectorConfig.getSsoUri().toString());
+					metaDataConfig.getRsaPublicKey());
+			JWTClaimsSet claimSet = SignedTokenVerifier.verifyToken(verifier, jwt, metaDataConfig.getSsoUri().toString());
 		} catch (Exception e) {
 			throw new TokenValidationException(e.getMessage());
 		}

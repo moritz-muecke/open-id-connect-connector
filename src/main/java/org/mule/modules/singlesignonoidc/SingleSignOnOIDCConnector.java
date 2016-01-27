@@ -1,10 +1,9 @@
 package org.mule.modules.singlesignonoidc;
-
 import java.util.Map;
 
 import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Response;
 
-import org.keycloak.common.VerificationException;
 import org.mule.api.MuleMessage;
 import org.mule.api.annotations.Config;
 import org.mule.api.annotations.Connector;
@@ -14,24 +13,24 @@ import org.mule.api.annotations.param.InboundHeaders;
 import org.mule.api.callback.SourceCallback;
 import org.mule.modules.singlesignonoidc.client.OpenIDConnectClient;
 import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
+import org.mule.modules.singlesignonoidc.exception.MetaDataInitializationException;
 import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
+import org.mule.transport.http.components.HttpResponseBuilder;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.oauth2.sdk.ParseException;
 
 @Connector(name="oidc-token-validator", friendlyName="OIDCTokenValidator")
 public class SingleSignOnOIDCConnector {
 
 	private OpenIDConnectClient client;
+	private final static String HTTP_STATUS = "http.status";
+	private final static String HTTP_REASON = "http.reason";
 	
 	@Config
     ConnectorConfig config;
     
     @Start
-    public void init() throws ParseException, JOSEException, java.text.ParseException {
+    public void init() throws MetaDataInitializationException {
     	client = new OpenIDConnectClient(config);
-    	//config.buildSsoUri();
-		//config.buildProviderMetadata();
     }
     
         
@@ -51,16 +50,17 @@ public class SingleSignOnOIDCConnector {
      */
     @Processor(intercepting = true)
     public Object onlineTokenValidation(SourceCallback callback, MuleMessage muleMessage, @InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, String introspectionEndpoint, String clientID, String clientSecret) {
-    	config.buildIntrospectionUri(introspectionEndpoint);
     	try {
-			client.validateToken(headers.get(HttpHeaders.AUTHORIZATION), true);
+			client.tokenIntrospection(headers.get(HttpHeaders.AUTHORIZATION), clientID, clientSecret, introspectionEndpoint);
 			return callback.process(muleMessage.getPayload());
-		} catch (VerificationException | TokenValidationException e) {
-			muleMessage.setOutboundProperty("http.status", 401);
+		} catch (TokenValidationException e) {
+			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.UNAUTHORIZED.getStatusCode());
+			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.UNAUTHORIZED.getReasonPhrase());
 			muleMessage.setPayload(e.getMessage());
 			return muleMessage.getPayload();
 		} catch (Exception e) {
-			muleMessage.setOutboundProperty("http.status", 400);
+			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.BAD_REQUEST.getStatusCode());
+			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.BAD_REQUEST.getReasonPhrase());
 			muleMessage.setPayload(e.getMessage());	
 			return muleMessage.getPayload();
 		}
@@ -81,14 +81,16 @@ public class SingleSignOnOIDCConnector {
     @Processor(intercepting = true)
     public Object localTokenValidation(SourceCallback callback, MuleMessage muleMessage, @InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers) {
     	try {
-			client.validateToken(headers.get(HttpHeaders.AUTHORIZATION), false);
+			client.localTokenValidation(headers.get(HttpHeaders.AUTHORIZATION));
 			return callback.process(muleMessage.getPayload());
-		} catch (VerificationException | TokenValidationException e) {
-			muleMessage.setOutboundProperty("http.status", 401);
+		} catch (TokenValidationException e) {
+			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.UNAUTHORIZED.getStatusCode());
+			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.UNAUTHORIZED.getReasonPhrase());
 			muleMessage.setPayload(e.getMessage());	
 			return muleMessage.getPayload();
 		} catch (Exception e) {
-			muleMessage.setOutboundProperty("http.status", 400);
+			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.BAD_REQUEST.getStatusCode());
+			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.BAD_REQUEST.getReasonPhrase());
 			muleMessage.setPayload(e.getMessage());	
 			return muleMessage.getPayload();
 		}
@@ -104,13 +106,9 @@ public class SingleSignOnOIDCConnector {
      * @param muleMessage injected by devkit
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
      */
-    @Processor(intercepting = true)
-    public Object actAsRelyingParty(SourceCallback callback, MuleMessage muleMessage) {
-		try {
-			return callback.process(muleMessage.getPayload());
-		} catch (Exception e) {
-			return muleMessage.getPayload();
-		}
+    @Processor
+    public void actAsRelyingParty() {
+		System.out.println("Test");
     }
     
     public ConnectorConfig getConfig() {

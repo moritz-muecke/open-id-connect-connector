@@ -3,5 +3,9 @@
 <!-- END_INCLUDE(oidc-token-validator:local-token-validation) -->
 
 <!-- BEGIN_INCLUDE(oidc-token-validator:online-token-validation) -->
-	<oidc-token-validator:online-token-validation introspectionEndpoint="/introspect" />
+	<oidc-token-validator:online-token-validation introspectionEndpoint="" clientId="" clientSecret="" />
 <!-- END_INCLUDE(oidc-token-validator:online-token-validation) -->
+
+<!-- BEGIN_INCLUDE(oidc-token-validator:act-as-relying-party) -->
+	<oidc-token-validator:act-as-relying-party/>
+<!-- END_INCLUDE(oidc-token-validator:act-as-relying-party) -->
