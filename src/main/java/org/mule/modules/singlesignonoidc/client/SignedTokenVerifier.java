@@ -24,7 +24,7 @@ public class SignedTokenVerifier {
 		}
 	}
 	
-	private static boolean isActive(long expTime, long notBeforeTime) {
+	public static boolean isActive(long expTime, long notBeforeTime) {
 		return System.currentTimeMillis() < expTime && System.currentTimeMillis() >= notBeforeTime;
 	}
 }

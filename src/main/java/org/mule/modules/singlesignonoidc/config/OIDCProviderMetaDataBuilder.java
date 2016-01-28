@@ -54,18 +54,17 @@ public class OIDCProviderMetaDataBuilder {
 	
 	public RSAPublicKey providePublicKey(OIDCProviderMetadata providerMetadata) throws ParseException, JOSEException, java.text.ParseException {
 		URI jwkSetUri = providerMetadata.getJWKSetURI();
-        String metaDataString = requestJsonString(jwkSetUri);
-        // Parse the data as json
-        JSONObject json = JSONObjectUtils.parse(metaDataString);
-        // Find the RSA signing key
+        String metaDataResponse = requestJsonString(jwkSetUri);
+        JSONObject json = JSONObjectUtils.parse(metaDataResponse);
+        RSAPublicKey publicKey = null;
         JSONArray keyList = (JSONArray) json.get("keys");
         for (Object key : keyList) {
             JSONObject k = (JSONObject) key;
             if (k.get("use").equals("sig") && k.get("kty").equals("RSA")) {
-                return RSAKey.parse(k).toRSAPublicKey();
+                publicKey = RSAKey.parse(k).toRSAPublicKey();
             }
         }
-        return null;
+        return publicKey;
 	}
 	
 	private URI uriBuilder(URI uri, String path) {

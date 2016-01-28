@@ -2,10 +2,8 @@ package org.mule.modules.singlesignonoidc.client;
 
 import net.minidev.json.JSONObject;
 
-import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
-import org.mule.modules.singlesignonoidc.config.ProviderMetaData;
+import org.mule.modules.singlesignonoidc.config.MetaDataProvider;
 import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
-import org.springframework.jdbc.support.MetaDataAccessException;
 
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
@@ -22,9 +20,9 @@ import com.nimbusds.oauth2.sdk.token.AccessToken;
 
 public class TokenValidator {
 
-	private ProviderMetaData metaDataConfig;
+	private MetaDataProvider metaDataConfig;
 
-	public TokenValidator(ProviderMetaData config) {
+	public TokenValidator(MetaDataProvider config) {
 		metaDataConfig = config;
 	}
 
@@ -63,14 +61,14 @@ public class TokenValidator {
 		}
 	}
 
-	public void localTokenValidation(String authHeader)
+	public JWTClaimsSet localTokenValidation(String authHeader)
 			throws TokenValidationException {
 		try {
 			AccessToken accessToken = AccessToken.parse(authHeader);
 			SignedJWT jwt = SignedJWT.parse(accessToken.getValue());
 			JWSVerifier verifier = new RSASSAVerifier(
 					metaDataConfig.getRsaPublicKey());
-			JWTClaimsSet claimSet = SignedTokenVerifier.verifyToken(verifier, jwt, metaDataConfig.getSsoUri().toString());
+			return SignedTokenVerifier.verifyToken(verifier, jwt, metaDataConfig.getSsoUri().toString());
 		} catch (Exception e) {
 			throw new TokenValidationException(e.getMessage());
 		}

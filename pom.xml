@@ -13,7 +13,6 @@
         <artifactId>mule-devkit-parent</artifactId>
         <version>3.8.0</version>
     </parent>
-
     <properties>
         <category>Community</category>
         <licensePath>LICENSE.md</licensePath>

@@ -58,6 +58,11 @@ public class SingleSignOnOIDCConnector {
 			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.UNAUTHORIZED.getReasonPhrase());
 			muleMessage.setPayload(e.getMessage());
 			return muleMessage.getPayload();
+		} catch (MetaDataInitializationException e) {
+			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+			muleMessage.setPayload(e.getMessage());
+			return muleMessage.getPayload();
 		} catch (Exception e) {
 			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.BAD_REQUEST.getStatusCode());
 			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.BAD_REQUEST.getReasonPhrase());
