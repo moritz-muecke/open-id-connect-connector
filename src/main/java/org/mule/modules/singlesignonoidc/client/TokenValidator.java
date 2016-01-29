@@ -1,8 +1,11 @@
 package org.mule.modules.singlesignonoidc.client;
 
+import java.io.IOException;
+
 import net.minidev.json.JSONObject;
 
 import org.mule.modules.singlesignonoidc.config.MetaDataProvider;
+import org.mule.modules.singlesignonoidc.exception.HTTPConnectException;
 import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
 
 import com.nimbusds.jose.JWSVerifier;
@@ -20,20 +23,18 @@ import com.nimbusds.oauth2.sdk.token.AccessToken;
 
 public class TokenValidator {
 
-	private MetaDataProvider metaDataConfig;
+	private MetaDataProvider metaDataProvider;
 
-	public TokenValidator(MetaDataProvider config) {
-		metaDataConfig = config;
+	public TokenValidator(MetaDataProvider provider) {
+		metaDataProvider = provider;
 	}
 
-	public void introspectionTokenValidation(String authHeader)
-			throws TokenValidationException {
+	public JSONObject introspectionTokenValidation(String authHeader)
+			throws TokenValidationException, HTTPConnectException {
 		try {
 			AccessToken accessToken = AccessToken.parse(authHeader);
 
-			TokenIntrospectionRequest introspectionRequest = new TokenIntrospectionRequest(
-					metaDataConfig.getIntrospectionUri(),
-					metaDataConfig.getClientSecretBasic(), accessToken);
+			TokenIntrospectionRequest introspectionRequest = createTokenIntrospectionRequest(accessToken);
 			HTTPResponse introSpectionHttpResponse = introspectionRequest
 					.toHTTPRequest().send();
 
@@ -56,6 +57,9 @@ public class TokenValidator {
 			if (!(boolean)claims.get("active")) {
 				throw new TokenValidationException("Token is not active");
 			}
+			return claims;
+		} catch (IOException e) {
+			throw new HTTPConnectException(String.format("Could not connect to the identity provider %s - Error: %s", metaDataProvider.getSsoUri(), e.getMessage()));
 		} catch (Exception e) {
 			throw new TokenValidationException(e.getMessage());
 		}
@@ -67,10 +71,17 @@ public class TokenValidator {
 			AccessToken accessToken = AccessToken.parse(authHeader);
 			SignedJWT jwt = SignedJWT.parse(accessToken.getValue());
 			JWSVerifier verifier = new RSASSAVerifier(
-					metaDataConfig.getRsaPublicKey());
-			return SignedTokenVerifier.verifyToken(verifier, jwt, metaDataConfig.getSsoUri().toString());
+					metaDataProvider.getRsaPublicKey());
+			return SignedTokenVerifier.verifyToken(verifier, jwt, metaDataProvider.getSsoUri().toString());
 		} catch (Exception e) {
 			throw new TokenValidationException(e.getMessage());
 		}
+	}
+	
+	public TokenIntrospectionRequest createTokenIntrospectionRequest(AccessToken accessToken) {
+		return new TokenIntrospectionRequest(
+				metaDataProvider.getIntrospectionUri(),
+				metaDataProvider.getClientSecretBasic(), 
+				accessToken);
 	}
 }

@@ -1,6 +1,7 @@
 package org.mule.modules.singlesignonoidc;
 import java.util.Map;
 
+import javax.enterprise.inject.Default;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 
@@ -8,11 +9,13 @@ import org.mule.api.MuleMessage;
 import org.mule.api.annotations.Config;
 import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.Processor;
+import org.mule.api.annotations.display.FriendlyName;
 import org.mule.api.annotations.lifecycle.Start;
 import org.mule.api.annotations.param.InboundHeaders;
 import org.mule.api.callback.SourceCallback;
 import org.mule.modules.singlesignonoidc.client.OpenIDConnectClient;
 import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
+import org.mule.modules.singlesignonoidc.exception.HTTPConnectException;
 import org.mule.modules.singlesignonoidc.exception.MetaDataInitializationException;
 import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
 import org.mule.transport.http.components.HttpResponseBuilder;
@@ -46,23 +49,35 @@ public class SingleSignOnOIDCConnector {
      * @param introspectionEndpoint The path of the introspection endpoint
      * @param clientID Any Client-ID from the SSO to prevent token scanning attacks
      * @param clientSecret The Secret of the given Client-ID
+     * @param claimExtraction Creates the FlowVar tokenClaims which contains a map with all claims of the given token
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
+     * @throws HTTPConnectException if the identity provider is not available
      */
     @Processor(intercepting = true)
-    public Object onlineTokenValidation(SourceCallback callback, MuleMessage muleMessage, @InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, String introspectionEndpoint, String clientID, String clientSecret) {
+    public Object onlineTokenValidation(
+    		SourceCallback callback, 
+    		MuleMessage muleMessage, 
+    		@InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, 
+    		String introspectionEndpoint, 
+    		@FriendlyName("Client ID")String clientID, 
+    		String clientSecret,
+    		boolean claimExtraction) throws HTTPConnectException {
     	try {
-			client.tokenIntrospection(headers.get(HttpHeaders.AUTHORIZATION), clientID, clientSecret, introspectionEndpoint);
-			return callback.process(muleMessage.getPayload());
+    		Map<String, Object> claims = client.tokenIntrospection(headers.get(HttpHeaders.AUTHORIZATION), clientID, clientSecret, introspectionEndpoint);
+			if (claimExtraction) {
+				muleMessage.setInvocationProperty("tokenClaims", claims);
+			}
+			return callback.process(muleMessage);
 		} catch (TokenValidationException e) {
 			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.UNAUTHORIZED.getStatusCode());
 			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.UNAUTHORIZED.getReasonPhrase());
 			muleMessage.setPayload(e.getMessage());
 			return muleMessage.getPayload();
-		} catch (MetaDataInitializationException e) {
-			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
-			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+		} catch (HTTPConnectException e) {
+			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.SERVICE_UNAVAILABLE.getStatusCode());
+			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.SERVICE_UNAVAILABLE.getReasonPhrase());
 			muleMessage.setPayload(e.getMessage());
-			return muleMessage.getPayload();
+			throw e;
 		} catch (Exception e) {
 			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.BAD_REQUEST.getStatusCode());
 			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.BAD_REQUEST.getReasonPhrase());
@@ -81,13 +96,21 @@ public class SingleSignOnOIDCConnector {
      * @param callback injected by devkit
      * @param muleMessage injected by devkit
      * @param headers Authorization header where the bearer token is located
+     * @param claimExtraction Creates the FlowVar tokenClaims which contains a map with all claims of the given token
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
      */
     @Processor(intercepting = true)
-    public Object localTokenValidation(SourceCallback callback, MuleMessage muleMessage, @InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers) {
+    public Object localTokenValidation(
+    		SourceCallback callback, 
+    		MuleMessage muleMessage, 
+    		@InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, 
+    		boolean claimExtraction) {
     	try {
-			client.localTokenValidation(headers.get(HttpHeaders.AUTHORIZATION));
-			return callback.process(muleMessage.getPayload());
+			Map<String, Object> claims = client.localTokenValidation(headers.get(HttpHeaders.AUTHORIZATION));
+			if (claimExtraction) {
+				muleMessage.setInvocationProperty("tokenClaims", claims);
+			}
+			return callback.process(muleMessage);
 		} catch (TokenValidationException e) {
 			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.UNAUTHORIZED.getStatusCode());
 			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.UNAUTHORIZED.getReasonPhrase());

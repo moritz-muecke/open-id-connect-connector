@@ -5,7 +5,7 @@ import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
-public class SignedTokenVerifier {
+public abstract class SignedTokenVerifier {
 	public static JWTClaimsSet verifyToken(JWSVerifier verifier, SignedJWT signedJWT, String origin) throws TokenValidationException {
 		try {
 			JWTClaimsSet claimSet = signedJWT.getJWTClaimsSet();

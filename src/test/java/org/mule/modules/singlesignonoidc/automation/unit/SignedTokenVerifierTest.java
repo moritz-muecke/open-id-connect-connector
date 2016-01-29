@@ -15,6 +15,7 @@ import net.minidev.json.JSONObject;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mule.modules.singlesignonoidc.automation.unit.util.RSAKeyGenerator;
 import org.mule.modules.singlesignonoidc.client.SignedTokenVerifier;
 import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
 
@@ -39,7 +40,7 @@ public class SignedTokenVerifierTest {
 	
 	@Before
 	public void init() throws Exception {
-		keyPair = keyPairGenerator();
+		keyPair = RSAKeyGenerator.keyPairGenerator();
 		verifier = new RSASSAVerifier((RSAPublicKey)keyPair.getPublic());
 		signer = new RSASSASigner((RSAPrivateKey)keyPair.getPrivate());
 		json = new JSONObject();
@@ -75,11 +76,5 @@ public class SignedTokenVerifierTest {
 		SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.RS512), JWTClaimsSet.parse(json));
 		jwt.sign(signer);
 		assertTrue(SignedTokenVerifier.verifyToken(verifier, jwt, props.getProperty("sso-url")) instanceof JWTClaimsSet);
-	}
-	
-	private KeyPair keyPairGenerator() throws Exception {
-		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-	    keyGen.initialize(1024);
-	    return keyGen.genKeyPair();
 	}
 }
