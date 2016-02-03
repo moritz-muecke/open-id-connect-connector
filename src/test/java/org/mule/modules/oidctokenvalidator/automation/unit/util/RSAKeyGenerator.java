@@ -1,4 +1,4 @@
-package org.mule.modules.singlesignonoidc.automation.unit.util;
+package org.mule.modules.oidctokenvalidator.automation.unit.util;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;

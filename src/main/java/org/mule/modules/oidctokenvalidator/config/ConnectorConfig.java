@@ -1,4 +1,4 @@
-package org.mule.modules.singlesignonoidc.config;
+package org.mule.modules.oidctokenvalidator.config;
 
 import org.mule.api.annotations.Configurable;
 import org.mule.api.annotations.components.Configuration;

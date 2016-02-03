@@ -1,4 +1,4 @@
-package org.mule.modules.singlesignonoidc.automation.unit;
+package org.mule.modules.oidctokenvalidator.automation.unit;
 
 import static org.junit.Assert.assertEquals;
 
@@ -14,10 +14,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
-import org.mule.modules.singlesignonoidc.automation.unit.util.RSAKeyGenerator;
-import org.mule.modules.singlesignonoidc.client.SignedTokenVerifier;
-import org.mule.modules.singlesignonoidc.client.TokenValidator;
-import org.mule.modules.singlesignonoidc.config.MetaDataProvider;
+import org.mule.modules.oidctokenvalidator.automation.unit.util.RSAKeyGenerator;
+import org.mule.modules.oidctokenvalidator.client.SignedTokenVerifier;
+import org.mule.modules.oidctokenvalidator.client.TokenValidator;
+import org.mule.modules.oidctokenvalidator.config.MetaDataProvider;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;

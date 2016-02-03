@@ -1,4 +1,4 @@
-package org.mule.modules.singlesignonoidc.automation.unit;
+package org.mule.modules.oidctokenvalidator.automation.unit;
 
 import static org.junit.Assert.assertEquals;
 
@@ -14,9 +14,9 @@ import java.util.Properties;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
-import org.mule.modules.singlesignonoidc.config.MetaDataProvider;
-import org.mule.modules.singlesignonoidc.config.OIDCProviderMetaDataBuilder;
+import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
+import org.mule.modules.oidctokenvalidator.config.MetaDataProvider;
+import org.mule.modules.oidctokenvalidator.config.OIDCProviderMetaDataBuilder;
 
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 

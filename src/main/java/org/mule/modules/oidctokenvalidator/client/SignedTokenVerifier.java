@@ -1,5 +1,5 @@
-package org.mule.modules.singlesignonoidc.client;
-import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
+package org.mule.modules.oidctokenvalidator.client;
+import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;

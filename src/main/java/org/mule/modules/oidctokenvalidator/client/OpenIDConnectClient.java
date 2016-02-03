@@ -1,4 +1,4 @@
-package org.mule.modules.singlesignonoidc.client;
+package org.mule.modules.oidctokenvalidator.client;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -8,11 +8,11 @@ import java.util.Map;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 
-import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
-import org.mule.modules.singlesignonoidc.config.MetaDataProvider;
-import org.mule.modules.singlesignonoidc.exception.HTTPConnectException;
-import org.mule.modules.singlesignonoidc.exception.MetaDataInitializationException;
-import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
+import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
+import org.mule.modules.oidctokenvalidator.config.MetaDataProvider;
+import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
+import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
+import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;

@@ -1,4 +1,4 @@
-package org.mule.modules.singlesignonoidc.automation.unit;
+package org.mule.modules.oidctokenvalidator.automation.unit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -15,7 +15,7 @@ import org.apache.tools.ant.types.CommandlineJava.SysProperties;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.mule.modules.singlesignonoidc.config.OIDCProviderMetaDataBuilder;
+import org.mule.modules.oidctokenvalidator.config.OIDCProviderMetaDataBuilder;
 
 import com.nimbusds.oauth2.sdk.ParseException;
 import com.nimbusds.oauth2.sdk.id.Issuer;

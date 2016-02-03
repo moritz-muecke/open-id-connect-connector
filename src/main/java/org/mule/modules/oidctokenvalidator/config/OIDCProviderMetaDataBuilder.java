@@ -1,4 +1,4 @@
-package org.mule.modules.singlesignonoidc.config;
+package org.mule.modules.oidctokenvalidator.config;
 
 import java.net.URI;
 

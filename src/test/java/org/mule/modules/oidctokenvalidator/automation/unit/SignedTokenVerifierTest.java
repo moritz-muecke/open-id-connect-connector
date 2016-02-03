@@ -1,4 +1,4 @@
-package org.mule.modules.singlesignonoidc.automation.unit;
+package org.mule.modules.oidctokenvalidator.automation.unit;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -15,9 +15,9 @@ import net.minidev.json.JSONObject;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.mule.modules.singlesignonoidc.automation.unit.util.RSAKeyGenerator;
-import org.mule.modules.singlesignonoidc.client.SignedTokenVerifier;
-import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
+import org.mule.modules.oidctokenvalidator.automation.unit.util.RSAKeyGenerator;
+import org.mule.modules.oidctokenvalidator.client.SignedTokenVerifier;
+import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;

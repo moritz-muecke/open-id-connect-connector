@@ -1,4 +1,4 @@
-package org.mule.modules.singlesignonoidc;
+package org.mule.modules.oidctokenvalidator;
 import java.util.Map;
 
 import javax.enterprise.inject.Default;
@@ -14,16 +14,16 @@ import org.mule.api.annotations.lifecycle.Start;
 import org.mule.api.annotations.param.InboundHeaders;
 import org.mule.api.callback.SourceCallback;
 import org.mule.api.transport.PropertyScope;
-import org.mule.modules.singlesignonoidc.client.OpenIDConnectClient;
-import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
-import org.mule.modules.singlesignonoidc.exception.HTTPConnectException;
-import org.mule.modules.singlesignonoidc.exception.MetaDataInitializationException;
-import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
+import org.mule.modules.oidctokenvalidator.client.OpenIDConnectClient;
+import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
+import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
+import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
+import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 import org.mule.transport.http.components.HttpResponseBuilder;
 
 
 @Connector(name="oidc-token-validator", friendlyName="OIDCTokenValidator")
-public class SingleSignOnOIDCConnector {
+public class OIDCTokenValidatorConnector {
 
 	private OpenIDConnectClient client;
 	private final static String HTTP_STATUS = "http.status";

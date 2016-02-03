@@ -1,12 +1,12 @@
-package org.mule.modules.singlesignonoidc.client;
+package org.mule.modules.oidctokenvalidator.client;
 
 import java.io.IOException;
 
 import net.minidev.json.JSONObject;
 
-import org.mule.modules.singlesignonoidc.config.MetaDataProvider;
-import org.mule.modules.singlesignonoidc.exception.HTTPConnectException;
-import org.mule.modules.singlesignonoidc.exception.TokenValidationException;
+import org.mule.modules.oidctokenvalidator.config.MetaDataProvider;
+import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
+import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.RSASSAVerifier;

@@ -1,4 +1,4 @@
-# SingleSignOnOIDC Anypoint Connector
+# OpenID Connect Token Validator Anypoint Connector
 
 [Connector description including destination service or application with]
 

@@ -1,4 +1,4 @@
-package org.mule.modules.singlesignonoidc.exception;
+package org.mule.modules.oidctokenvalidator.exception;
 
 public class HTTPConnectException extends Exception {
 	/**
