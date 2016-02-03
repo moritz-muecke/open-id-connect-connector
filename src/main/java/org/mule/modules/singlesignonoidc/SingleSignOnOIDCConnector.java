@@ -13,6 +13,7 @@ import org.mule.api.annotations.display.FriendlyName;
 import org.mule.api.annotations.lifecycle.Start;
 import org.mule.api.annotations.param.InboundHeaders;
 import org.mule.api.callback.SourceCallback;
+import org.mule.api.transport.PropertyScope;
 import org.mule.modules.singlesignonoidc.client.OpenIDConnectClient;
 import org.mule.modules.singlesignonoidc.config.ConnectorConfig;
 import org.mule.modules.singlesignonoidc.exception.HTTPConnectException;
@@ -109,8 +110,9 @@ public class SingleSignOnOIDCConnector {
 			Map<String, Object> claims = client.localTokenValidation(headers.get(HttpHeaders.AUTHORIZATION));
 			if (claimExtraction) {
 				muleMessage.setInvocationProperty("tokenClaims", claims);
+				muleMessage.setProperty("tokenClaims", claims, PropertyScope.INBOUND);
 			}
-			return callback.process(muleMessage);
+			return callback.process(muleMessage, claims);
 		} catch (TokenValidationException e) {
 			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.UNAUTHORIZED.getStatusCode());
 			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.UNAUTHORIZED.getReasonPhrase());
