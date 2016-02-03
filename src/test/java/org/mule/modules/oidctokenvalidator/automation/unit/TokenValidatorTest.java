@@ -15,9 +15,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.mule.modules.oidctokenvalidator.automation.unit.util.RSAKeyGenerator;
-import org.mule.modules.oidctokenvalidator.client.SignedTokenVerifier;
-import org.mule.modules.oidctokenvalidator.client.TokenValidator;
-import org.mule.modules.oidctokenvalidator.config.MetaDataProvider;
+import org.mule.modules.oidctokenvalidator.client.oidc.SignedTokenVerifier;
+import org.mule.modules.oidctokenvalidator.client.oidc.TokenValidator;
+import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -45,7 +45,7 @@ public class TokenValidatorTest extends Mockito{
 	
 	@Test
 	public void introspectionTokenValidationShouldReturnTokenClaims() throws Exception {
-		MetaDataProvider metaDataProvider = mock(MetaDataProvider.class);
+		SingleSignOnConfig metaDataProvider = mock(SingleSignOnConfig.class);
 		TokenValidator tokenValidator = spy(new TokenValidator(metaDataProvider));
 		
 		HTTPResponse httpResponse = new HTTPResponse(HTTPResponse.SC_OK);
@@ -78,7 +78,7 @@ public class TokenValidatorTest extends Mockito{
 		json.put("nbf", 0);
 		JWTClaimsSet givenClaims = JWTClaimsSet.parse(json);
 		
-		MetaDataProvider metaDataProvider = mock(MetaDataProvider.class);
+		SingleSignOnConfig metaDataProvider = mock(SingleSignOnConfig.class);
 		when(metaDataProvider.getRsaPublicKey()).thenReturn((RSAPublicKey)RSAKeyGenerator.keyPairGenerator().getPublic());
 		when(metaDataProvider.getSsoUri()).thenReturn(new URI(props.getProperty("sso-url")));
 

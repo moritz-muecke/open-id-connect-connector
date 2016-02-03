@@ -10,6 +10,10 @@ import org.mule.api.annotations.param.Optional;
 @Configuration(friendlyName = "Configuration")
 public class ConnectorConfig {
 	
+	private String clientId;
+	private String clientSecret;
+	private String introspectionEndpoint;
+	
 	@Configurable
     @FriendlyName("SSO Server URL")
     @Default("http://localhost")
@@ -138,4 +142,30 @@ public class ConnectorConfig {
 	public void setJwkSetEndpoint(String jwkSetEndpoint) {
 		this.jwkSetEndpoint = jwkSetEndpoint;
 	}
+
+	public String getClientId() {
+		return clientId;
+	}
+
+	public void setClientId(String clientId) {
+		this.clientId = clientId;
+	}
+
+	public String getClientSecret() {
+		return clientSecret;
+	}
+
+	public void setClientSecret(String clientSecret) {
+		this.clientSecret = clientSecret;
+	}
+
+	public String getIntrospectionEndpoint() {
+		return introspectionEndpoint;
+	}
+
+	public void setIntrospectionEndpoint(String introspectionEndpoint) {
+		this.introspectionEndpoint = introspectionEndpoint;
+	}
+	
+	
 }

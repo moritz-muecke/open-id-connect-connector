@@ -12,7 +12,7 @@ import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.id.ClientID;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 
-public class MetaDataProvider {
+public class SingleSignOnConfig {
 	private OIDCProviderMetadata providerMetadata;
 	private RSAPublicKey rsaPublicKey;
 	private ClientSecretBasic clientSecretBasic;
@@ -24,12 +24,12 @@ public class MetaDataProvider {
 	
 	private ConnectorConfig config;
 	
-	private OIDCProviderMetaDataBuilder metaDataBuilder;
+	private OpenIDConnectMetaDataBuilder metaDataBuilder;
 	
-	public MetaDataProvider(ConnectorConfig config) {
+	public SingleSignOnConfig(ConnectorConfig config) {
 		this.config = config;
 		buildSsoUri();
-		metaDataBuilder = new OIDCProviderMetaDataBuilder(ssoUri);
+		metaDataBuilder = new OpenIDConnectMetaDataBuilder(ssoUri);
 	}
 	
 	public void buildSsoUri() {
@@ -92,7 +92,7 @@ public class MetaDataProvider {
 		this.clientSecret = clientSecret;
 	}
 
-	public void setMetaDataBuilder(OIDCProviderMetaDataBuilder metaDataBuilder) {
+	public void setMetaDataBuilder(OpenIDConnectMetaDataBuilder metaDataBuilder) {
 		this.metaDataBuilder = metaDataBuilder;
 	}	
 }

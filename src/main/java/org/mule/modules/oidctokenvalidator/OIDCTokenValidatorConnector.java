@@ -15,6 +15,7 @@ import org.mule.api.annotations.param.InboundHeaders;
 import org.mule.api.callback.SourceCallback;
 import org.mule.api.transport.PropertyScope;
 import org.mule.modules.oidctokenvalidator.client.OpenIDConnectClient;
+import org.mule.modules.oidctokenvalidator.client.TokenValidatorClient;
 import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
@@ -25,7 +26,7 @@ import org.mule.transport.http.components.HttpResponseBuilder;
 @Connector(name="oidc-token-validator", friendlyName="OIDCTokenValidator")
 public class OIDCTokenValidatorConnector {
 
-	private OpenIDConnectClient client;
+	private TokenValidatorClient client;
 	private final static String HTTP_STATUS = "http.status";
 	private final static String HTTP_REASON = "http.reason";
 	
@@ -63,8 +64,11 @@ public class OIDCTokenValidatorConnector {
     		@FriendlyName("Client ID")String clientID, 
     		String clientSecret,
     		boolean claimExtraction) throws HTTPConnectException {
+    	config.setClientId(clientID);
+    	config.setClientSecret(clientSecret);
+    	config.setIntrospectionEndpoint(introspectionEndpoint);
     	try {
-    		Map<String, Object> claims = client.tokenIntrospection(headers.get(HttpHeaders.AUTHORIZATION), clientID, clientSecret, introspectionEndpoint);
+    		Map<String, Object> claims = client.ssoTokenValidation(headers.get(HttpHeaders.AUTHORIZATION));
 			if (claimExtraction) {
 				muleMessage.setInvocationProperty("tokenClaims", claims);
 			}
@@ -149,11 +153,11 @@ public class OIDCTokenValidatorConnector {
         this.config = config;
     }
     
-    public OpenIDConnectClient getClient() {
+    public TokenValidatorClient getClient() {
 		return client;
 	}
 
-	public void setClient(OpenIDConnectClient client) {
+	public void setClient(TokenValidatorClient client) {
 		this.client = client;
 	}
 

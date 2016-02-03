@@ -1,4 +1,4 @@
-package org.mule.modules.oidctokenvalidator.client;
+package org.mule.modules.oidctokenvalidator.client.oidc;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
 import com.nimbusds.jose.JWSVerifier;

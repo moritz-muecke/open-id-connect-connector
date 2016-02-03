@@ -16,7 +16,7 @@ import net.minidev.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.mule.modules.oidctokenvalidator.automation.unit.util.RSAKeyGenerator;
-import org.mule.modules.oidctokenvalidator.client.SignedTokenVerifier;
+import org.mule.modules.oidctokenvalidator.client.oidc.SignedTokenVerifier;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
 import com.nimbusds.jose.JWSAlgorithm;

@@ -1,10 +1,10 @@
-package org.mule.modules.oidctokenvalidator.client;
+package org.mule.modules.oidctokenvalidator.client.oidc;
 
 import java.io.IOException;
 
 import net.minidev.json.JSONObject;
 
-import org.mule.modules.oidctokenvalidator.config.MetaDataProvider;
+import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
@@ -23,9 +23,9 @@ import com.nimbusds.oauth2.sdk.token.AccessToken;
 
 public class TokenValidator {
 
-	private MetaDataProvider metaDataProvider;
+	private SingleSignOnConfig metaDataProvider;
 
-	public TokenValidator(MetaDataProvider provider) {
+	public TokenValidator(SingleSignOnConfig provider) {
 		metaDataProvider = provider;
 	}
 

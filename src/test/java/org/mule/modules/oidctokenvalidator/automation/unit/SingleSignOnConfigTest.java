@@ -15,12 +15,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
-import org.mule.modules.oidctokenvalidator.config.MetaDataProvider;
-import org.mule.modules.oidctokenvalidator.config.OIDCProviderMetaDataBuilder;
+import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
+import org.mule.modules.oidctokenvalidator.config.OpenIDConnectMetaDataBuilder;
 
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 
-public class MetaDataProviderTest extends Mockito{
+public class SingleSignOnConfigTest extends Mockito{
 	
 	private Properties props;
 	
@@ -41,10 +41,10 @@ public class MetaDataProviderTest extends Mockito{
 		when(config.getJwkSetEndpoint()).thenReturn(props.getProperty("sso-jwk-set-endpoint"));
 		when(config.isConfigDiscovery()).thenReturn(false);
 
-		OIDCProviderMetaDataBuilder metaDataBuilder = mock(OIDCProviderMetaDataBuilder.class);
+		OpenIDConnectMetaDataBuilder metaDataBuilder = mock(OpenIDConnectMetaDataBuilder.class);
 		when(metaDataBuilder.providePublicKey(Mockito.any(OIDCProviderMetadata.class))).thenReturn(getSampleRSAPublicKey());
 		
-		MetaDataProvider metaDataProvider = new MetaDataProvider(config);
+		SingleSignOnConfig metaDataProvider = new SingleSignOnConfig(config);
 		metaDataProvider.setMetaDataBuilder(metaDataBuilder);
 		metaDataProvider.buildProviderMetadata();
 		assertEquals(metaDataProvider.getRsaPublicKey(), getSampleRSAPublicKey());

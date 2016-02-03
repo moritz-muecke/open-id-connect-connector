@@ -26,12 +26,12 @@ import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;
 import com.nimbusds.openid.connect.sdk.SubjectType;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 
-public class OIDCProviderMetaDataBuilder {
+public class OpenIDConnectMetaDataBuilder {
 	
 	private Client client;
 	private URI providerUri;
 	
-	public OIDCProviderMetaDataBuilder(URI providerUri) {
+	public OpenIDConnectMetaDataBuilder(URI providerUri) {
 		this.providerUri = providerUri;
 		client = ClientBuilder.newClient();
 	}

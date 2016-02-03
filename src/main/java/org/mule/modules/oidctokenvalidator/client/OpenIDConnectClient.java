@@ -8,8 +8,9 @@ import java.util.Map;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 
+import org.mule.modules.oidctokenvalidator.client.oidc.TokenValidator;
 import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
-import org.mule.modules.oidctokenvalidator.config.MetaDataProvider;
+import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
@@ -20,13 +21,15 @@ import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.id.ClientID;
 
 
-public class OpenIDConnectClient {
+public class OpenIDConnectClient implements TokenValidatorClient{
 	
 	private TokenValidator tokenValidator;
-	private MetaDataProvider metaDataProvider;
+	private SingleSignOnConfig metaDataProvider;
+	private ConnectorConfig config;
 	
 	public OpenIDConnectClient(ConnectorConfig config) throws MetaDataInitializationException {
-		metaDataProvider = new MetaDataProvider(config);
+		this.config = config;
+		metaDataProvider = new SingleSignOnConfig(this.config);
 		try {
 			metaDataProvider.buildProviderMetadata();
 		} catch (Exception e) {
@@ -35,14 +38,14 @@ public class OpenIDConnectClient {
 		tokenValidator = new TokenValidator(metaDataProvider);
 	}
 	
-	public Map<String, Object> tokenIntrospection(String authHeader, String clientId, String clientSecret, String introspectionEndpoint) 
+	public Map<String, Object> ssoTokenValidation(String authHeader) 
 			throws TokenValidationException, HTTPConnectException {
 		try {
-			metaDataProvider.setIntrospectionUri(new URI(metaDataProvider.getSsoUri() + introspectionEndpoint));
+			metaDataProvider.setIntrospectionUri(new URI(metaDataProvider.getSsoUri() + config.getIntrospectionEndpoint()));
 		} catch (URISyntaxException e) {
 			throw new TokenValidationException("Invalid introspection URL path");
 		}
-		metaDataProvider.setClientSecretBasic(new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret)));
+		metaDataProvider.setClientSecretBasic(new ClientSecretBasic(new ClientID(config.getClientId()), new Secret(config.getClientSecret())));
 		return tokenValidator.introspectionTokenValidation(authHeader);
 	}
 	
