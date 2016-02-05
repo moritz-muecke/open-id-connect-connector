@@ -4,8 +4,8 @@ import java.util.Map;
 
 public interface TokenValidatorClient {
 	
-	public Map<String, Object> ssoTokenValidation(String header) throws Exception;
+	Map<String, Object> ssoTokenValidation(String header) throws Exception;
 	
-	public Map<String,Object> localTokenValidation(String header) throws Exception;
+	Map<String,Object> localTokenValidation(String header) throws Exception;
 	
 }

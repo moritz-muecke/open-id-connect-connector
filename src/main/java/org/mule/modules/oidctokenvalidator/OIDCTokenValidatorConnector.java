@@ -144,7 +144,8 @@ public class OIDCTokenValidatorConnector {
     @Processor(intercepting = true)
     public Object actAsRelyingParty(SourceCallback callback, MuleMessage muleMessage) throws Exception {
     	Map<String, String> queryParams = muleMessage.getInboundProperty("http.query.params");
-    	if(queryParams.get("code") != null){
+        System.out.println(queryParams);
+        if(queryParams.get("code") != null){
 			return callback.process();
 		} else {
 			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.FOUND.getStatusCode());
