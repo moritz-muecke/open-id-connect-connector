@@ -139,10 +139,19 @@ public class OIDCTokenValidatorConnector {
      * @param callback injected by devkit
      * @param muleMessage injected by devkit
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
+     * @throws Exception 
      */
-    @Processor
-    public void actAsRelyingParty() {
-		System.out.println("Test");
+    @Processor(intercepting = true)
+    public Object actAsRelyingParty(SourceCallback callback, MuleMessage muleMessage) throws Exception {
+    	Map<String, String> queryParams = muleMessage.getInboundProperty("http.query.params");
+    	if(queryParams.get("code") != null){
+			return callback.process();
+		} else {
+			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.FOUND.getStatusCode());
+			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.FOUND.getReasonPhrase());
+	        muleMessage.setOutboundProperty("Location", "http://localhost:8080/auth/realms/master/protocol/openid-connect/auth?response_type=code&scope=openid&client_id=account&redirect_uri=http://localhost:8081");
+	        return muleMessage.getPayload();	
+		}
     }
     
     public ConnectorConfig getConfig() {
