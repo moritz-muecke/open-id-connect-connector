@@ -42,7 +42,7 @@ public class OIDCTokenValidatorConnector {
     /**
      * Uses OIDC token introspection to validate a bearer token
      * 
-     * {@sample.xml ../../../doc/single-sign-on-oidc-connector.xml.sample
+     * {@sample.xml ../../../doc/oidc-token-validator-connector.xml.sample
 	 * oidc-token-validator:online-token-validation}
      * 
      * @param callback injected by devkit
@@ -95,7 +95,7 @@ public class OIDCTokenValidatorConnector {
     /**
      * Local validation of a bearer token
      * 
-     * {@sample.xml ../../../doc/single-sign-on-oidc-connector.xml.sample
+     * {@sample.xml ../../../doc/oidc-token-validator-connector.xml.sample
 	 * oidc-token-validator:local-token-validation}
      * 
      * @param callback injected by devkit
@@ -133,7 +133,7 @@ public class OIDCTokenValidatorConnector {
     /**
      * Connector works as a OIDC relying party
      * 
-     * {@sample.xml ../../../doc/single-sign-on-oidc-connector.xml.sample
+     * {@sample.xml ../../../doc/oidc-token-validator-connector.xml.sample
 	 * oidc-token-validator:act-as-relying-party}
      * 
      * @param callback injected by devkit

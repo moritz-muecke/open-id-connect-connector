@@ -58,6 +58,7 @@ public class OpenIDConnectMetaDataBuilder {
         JSONObject json = JSONObjectUtils.parse(metaDataResponse);
         RSAPublicKey publicKey = null;
         JSONArray keyList = (JSONArray) json.get("keys");
+
         for (Object key : keyList) {
             JSONObject k = (JSONObject) key;
             if (k.get("use").equals("sig") && k.get("kty").equals("RSA")) {
