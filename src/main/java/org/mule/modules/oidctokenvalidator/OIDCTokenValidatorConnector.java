@@ -5,6 +5,7 @@ import javax.enterprise.inject.Default;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 
+import org.apache.commons.httpclient.Cookie;
 import org.mule.api.MuleMessage;
 import org.mule.api.annotations.Config;
 import org.mule.api.annotations.Connector;
@@ -12,6 +13,7 @@ import org.mule.api.annotations.Processor;
 import org.mule.api.annotations.display.FriendlyName;
 import org.mule.api.annotations.lifecycle.Start;
 import org.mule.api.annotations.param.InboundHeaders;
+import org.mule.api.annotations.param.OutboundHeaders;
 import org.mule.api.callback.SourceCallback;
 import org.mule.api.transport.PropertyScope;
 import org.mule.modules.oidctokenvalidator.client.OpenIDConnectClient;
@@ -20,6 +22,7 @@ import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
+import org.mule.transport.http.CookieHelper;
 import org.mule.transport.http.components.HttpResponseBuilder;
 
 
@@ -154,6 +157,14 @@ public class OIDCTokenValidatorConnector {
 	        return muleMessage.getPayload();	
 		}
     }
+	
+	@Processor
+	public void cookieTest(@OutboundHeaders Map<String, Object> headers) {
+
+		String cookieValue = CookieHelper.formatCookieForASetCookieHeader(new Cookie("localhost:8080", "moritz", "moeller"));
+
+		headers.put("set-cookie", cookieValue);
+	}
     
     public ConnectorConfig getConfig() {
         return config;
