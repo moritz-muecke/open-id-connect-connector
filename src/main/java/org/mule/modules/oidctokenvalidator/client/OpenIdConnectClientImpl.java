@@ -2,12 +2,9 @@ package org.mule.modules.oidctokenvalidator.client;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.Map;
 
-import net.minidev.json.JSONArray;
-import net.minidev.json.JSONObject;
-
+import org.mule.api.MuleMessage;
 import org.mule.modules.oidctokenvalidator.client.oidc.TokenValidator;
 import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
@@ -21,13 +18,13 @@ import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.id.ClientID;
 
 
-public class OpenIDConnectClient implements TokenValidatorClient{
+public class OpenIdConnectClientImpl implements OpenIdConnectClient {
 	
 	private TokenValidator tokenValidator;
 	private SingleSignOnConfig metaDataProvider;
 	private ConnectorConfig config;
 	
-	public OpenIDConnectClient(ConnectorConfig config) throws MetaDataInitializationException {
+	public OpenIdConnectClientImpl(ConnectorConfig config) throws MetaDataInitializationException {
 		this.config = config;
 		metaDataProvider = new SingleSignOnConfig(this.config);
 		try {
@@ -52,6 +49,10 @@ public class OpenIDConnectClient implements TokenValidatorClient{
 	public Map<String, Object> localTokenValidation(String authHeader) throws TokenValidationException {
 		JWTClaimsSet jwtClaimSet = tokenValidator.localTokenValidation(authHeader);
 		return jwtClaimSet.toJSONObject();
+	}
+
+	public MuleMessage actAsRelyingParty(MuleMessage muleMessage) {
+		return null;
 	}
 }
 

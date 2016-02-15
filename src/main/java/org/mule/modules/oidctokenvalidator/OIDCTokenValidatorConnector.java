@@ -1,11 +1,11 @@
 package org.mule.modules.oidctokenvalidator;
 import java.util.Map;
 
-import javax.enterprise.inject.Default;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.httpclient.Cookie;
+import org.mule.api.MuleEvent;
 import org.mule.api.MuleMessage;
 import org.mule.api.annotations.Config;
 import org.mule.api.annotations.Connector;
@@ -16,20 +16,19 @@ import org.mule.api.annotations.param.InboundHeaders;
 import org.mule.api.annotations.param.OutboundHeaders;
 import org.mule.api.callback.SourceCallback;
 import org.mule.api.transport.PropertyScope;
-import org.mule.modules.oidctokenvalidator.client.OpenIDConnectClient;
-import org.mule.modules.oidctokenvalidator.client.TokenValidatorClient;
+import org.mule.modules.oidctokenvalidator.client.OpenIdConnectClientImpl;
+import org.mule.modules.oidctokenvalidator.client.OpenIdConnectClient;
 import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 import org.mule.transport.http.CookieHelper;
-import org.mule.transport.http.components.HttpResponseBuilder;
 
 
 @Connector(name="oidc-token-validator", friendlyName="OIDCTokenValidator")
 public class OIDCTokenValidatorConnector {
 
-	private TokenValidatorClient client;
+	private OpenIdConnectClient client;
 	private final static String HTTP_STATUS = "http.status";
 	private final static String HTTP_REASON = "http.reason";
 	
@@ -38,7 +37,7 @@ public class OIDCTokenValidatorConnector {
     
     @Start
     public void init() throws MetaDataInitializationException {
-    	client = new OpenIDConnectClient(config);
+    	client = new OpenIdConnectClientImpl(config);
     }
     
         
@@ -102,7 +101,7 @@ public class OIDCTokenValidatorConnector {
 	 * oidc-token-validator:local-token-validation}
      * 
      * @param callback injected by devkit
-     * @param muleMessage injected by devkit
+     * @param muleEvent injected by devkit
      * @param headers Authorization header where the bearer token is located
      * @param claimExtraction Creates the FlowVar tokenClaims which contains a map with all claims of the given token
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
@@ -110,16 +109,18 @@ public class OIDCTokenValidatorConnector {
     @Processor(intercepting = true)
     public Object localTokenValidation(
     		SourceCallback callback, 
-    		MuleMessage muleMessage, 
+    		MuleEvent muleEvent,
     		@InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, 
     		boolean claimExtraction) {
+
+		MuleMessage muleMessage = muleEvent.getMessage();
+
     	try {
 			Map<String, Object> claims = client.localTokenValidation(headers.get(HttpHeaders.AUTHORIZATION));
 			if (claimExtraction) {
-				muleMessage.setInvocationProperty("tokenClaims", claims);
-				muleMessage.setProperty("tokenClaims", claims, PropertyScope.INBOUND);
-			}
-			return callback.process(muleMessage, claims);
+                muleMessage.setInvocationProperty("tokenClaims", claims);
+            }
+			return callback.processEvent(muleEvent);
 		} catch (TokenValidationException e) {
 			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.UNAUTHORIZED.getStatusCode());
 			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.UNAUTHORIZED.getReasonPhrase());
@@ -174,11 +175,11 @@ public class OIDCTokenValidatorConnector {
         this.config = config;
     }
     
-    public TokenValidatorClient getClient() {
+    public OpenIdConnectClient getClient() {
 		return client;
 	}
 
-	public void setClient(TokenValidatorClient client) {
+	public void setClient(OpenIdConnectClient client) {
 		this.client = client;
 	}
 
