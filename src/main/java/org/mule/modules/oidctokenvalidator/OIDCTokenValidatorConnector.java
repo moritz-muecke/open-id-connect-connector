@@ -1,10 +1,12 @@
 package org.mule.modules.oidctokenvalidator;
 import java.util.Map;
+import java.util.UUID;
 
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.httpclient.Cookie;
+import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
 import org.mule.api.MuleMessage;
 import org.mule.api.annotations.Config;
@@ -15,10 +17,14 @@ import org.mule.api.annotations.lifecycle.Start;
 import org.mule.api.annotations.param.InboundHeaders;
 import org.mule.api.annotations.param.OutboundHeaders;
 import org.mule.api.callback.SourceCallback;
+import org.mule.api.store.ObjectStore;
+import org.mule.api.store.ObjectStoreException;
 import org.mule.api.transport.PropertyScope;
 import org.mule.modules.oidctokenvalidator.client.OpenIdConnectClientImpl;
 import org.mule.modules.oidctokenvalidator.client.OpenIdConnectClient;
+import org.mule.modules.oidctokenvalidator.client.oidc.*;
 import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
+import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
@@ -31,13 +37,18 @@ public class OIDCTokenValidatorConnector {
 	private OpenIdConnectClient client;
 	private final static String HTTP_STATUS = "http.status";
 	private final static String HTTP_REASON = "http.reason";
-	
+
 	@Config
     ConnectorConfig config;
-    
+
+
     @Start
     public void init() throws MetaDataInitializationException {
-    	client = new OpenIdConnectClientImpl(config);
+        SingleSignOnConfig ssoConfig = new SingleSignOnConfig(config);
+        TokenStorage storage = new TokenStorageImpl();
+        TokenRequester requester = new TokenRequesterImpl();
+        TokenValidator validator = new TokenValidator(ssoConfig);
+    	client = new OpenIdConnectClientImpl(config, ssoConfig, validator, requester, storage);
     }
     
         
@@ -119,6 +130,7 @@ public class OIDCTokenValidatorConnector {
 			Map<String, Object> claims = client.localTokenValidation(headers.get(HttpHeaders.AUTHORIZATION));
 			if (claimExtraction) {
                 muleMessage.setInvocationProperty("tokenClaims", claims);
+				muleMessage.addProperties(claims, PropertyScope.OUTBOUND);
             }
 			return callback.processEvent(muleEvent);
 		} catch (TokenValidationException e) {
@@ -147,7 +159,9 @@ public class OIDCTokenValidatorConnector {
      */
     @Processor(intercepting = true)
     public Object actAsRelyingParty(SourceCallback callback, MuleMessage muleMessage) throws Exception {
-    	Map<String, String> queryParams = muleMessage.getInboundProperty("http.query.params");
+    	muleMessage = client.actAsRelyingParty(muleMessage);
+
+		Map<String, String> queryParams = muleMessage.getInboundProperty("http.query.params");
         System.out.println(queryParams);
         if(queryParams.get("code") != null){
 			return callback.process();
@@ -158,15 +172,32 @@ public class OIDCTokenValidatorConnector {
 	        return muleMessage.getPayload();	
 		}
     }
-	
+
+
+	/*
 	@Processor
-	public void cookieTest(@OutboundHeaders Map<String, Object> headers) {
+	public void cookieTest(@OutboundHeaders Map<String, Object> headers, MuleMessage muleMessage) {
 
-		String cookieValue = CookieHelper.formatCookieForASetCookieHeader(new Cookie("localhost:8080", "moritz", "moeller"));
 
-		headers.put("set-cookie", cookieValue);
-	}
-    
+		String cookieHeader = muleMessage.getInboundProperty("cookie");
+
+        String[] cookies = cookieHeader.split(";");
+
+
+
+        Cookie cookie = new Cookie("localhost:8080", COOKIE_NAME, "123.avc.asd");
+		headers.put(org.mule.module.http.api.HttpHeaders.Names.SET_COOKIE, cookie);
+    }
+    */
+
+    @Processor
+    public void objectStoreTest(MuleContext context, String key) throws ObjectStoreException {
+        ObjectStore<String> store = context.getObjectStoreManager().getObjectStore("oidc-connector");
+        store.store(key, UUID.randomUUID().toString());
+        store.retrieve("moritz");
+    }
+
+
     public ConnectorConfig getConfig() {
         return config;
     }
