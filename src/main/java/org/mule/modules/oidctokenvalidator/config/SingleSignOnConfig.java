@@ -18,7 +18,7 @@ public class SingleSignOnConfig {
 	private ClientSecretBasic clientSecretBasic;
 	private String clientId;
 	private String clientSecret;
-	
+	private URI redirectUri;
 	private URI introspectionUri;
 	private URI ssoUri;
 	
@@ -94,5 +94,13 @@ public class SingleSignOnConfig {
 
 	public void setMetaDataBuilder(OpenIDConnectMetaDataBuilder metaDataBuilder) {
 		this.metaDataBuilder = metaDataBuilder;
-	}	
+	}
+
+	public URI getRedirectUri() {
+		return redirectUri;
+	}
+
+	public void setRedirectUri(URI redirectUri) {
+		this.redirectUri = redirectUri;
+	}
 }

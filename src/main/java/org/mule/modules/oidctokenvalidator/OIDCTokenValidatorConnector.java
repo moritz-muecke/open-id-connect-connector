@@ -1,10 +1,17 @@
 package org.mule.modules.oidctokenvalidator;
+import java.io.Serializable;
+import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.inject.Inject;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 
+import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
+import com.nimbusds.oauth2.sdk.auth.Secret;
+import com.nimbusds.oauth2.sdk.id.ClientID;
 import org.apache.commons.httpclient.Cookie;
 import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
@@ -13,10 +20,12 @@ import org.mule.api.annotations.Config;
 import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.Processor;
 import org.mule.api.annotations.display.FriendlyName;
+import org.mule.api.annotations.display.Password;
 import org.mule.api.annotations.lifecycle.Start;
 import org.mule.api.annotations.param.InboundHeaders;
 import org.mule.api.annotations.param.OutboundHeaders;
 import org.mule.api.callback.SourceCallback;
+import org.mule.api.store.ListableObjectStore;
 import org.mule.api.store.ObjectStore;
 import org.mule.api.store.ObjectStoreException;
 import org.mule.api.transport.PropertyScope;
@@ -41,12 +50,15 @@ public class OIDCTokenValidatorConnector {
 	@Config
     ConnectorConfig config;
 
+    @Inject
+    MuleContext muleContext;
 
     @Start
-    public void init() throws MetaDataInitializationException {
+    public void init() throws MetaDataInitializationException, ObjectStoreException {
         SingleSignOnConfig ssoConfig = new SingleSignOnConfig(config);
-        TokenStorage storage = new TokenStorageImpl();
-        TokenRequester requester = new TokenRequesterImpl();
+        ListableObjectStore<String> tokenStore = muleContext.getObjectStoreManager().getObjectStore("oidc-connector");
+        TokenStorage storage = new TokenStorageImpl(tokenStore);
+        TokenRequester requester = new TokenRequesterImpl(ssoConfig);
         TokenValidator validator = new TokenValidator(ssoConfig);
     	client = new OpenIdConnectClientImpl(config, ssoConfig, validator, requester, storage);
     }
@@ -153,50 +165,23 @@ public class OIDCTokenValidatorConnector {
 	 * oidc-token-validator:act-as-relying-party}
      * 
      * @param callback injected by devkit
-     * @param muleMessage injected by devkit
+     * @param muleEvent injected by devkit
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
      * @throws Exception 
      */
     @Processor(intercepting = true)
-    public Object actAsRelyingParty(SourceCallback callback, MuleMessage muleMessage) throws Exception {
-    	muleMessage = client.actAsRelyingParty(muleMessage);
+    public Object actAsRelyingParty(SourceCallback callback, MuleEvent muleEvent, String redirectUri, String clientId, @Password String clientSecret) throws Exception {
 
-		Map<String, String> queryParams = muleMessage.getInboundProperty("http.query.params");
-        System.out.println(queryParams);
-        if(queryParams.get("code") != null){
-			return callback.process();
-		} else {
-			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.FOUND.getStatusCode());
-			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.FOUND.getReasonPhrase());
-	        muleMessage.setOutboundProperty("Location", "http://localhost:8080/auth/realms/master/protocol/openid-connect/auth?response_type=code&scope=openid&client_id=account&redirect_uri=http://localhost:8081");
-	        return muleMessage.getPayload();	
-		}
+        MuleMessage muleMessage = muleEvent.getMessage();
+
+        ClientSecretBasic clientSecretBasic = new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret));
+        client.getSsoConfig().setRedirectUri(new URI(redirectUri));
+        client.getSsoConfig().setClientSecretBasic(clientSecretBasic);
+
+        if (client.actAsRelyingParty(muleMessage)) {
+            return callback.process(muleMessage);
+        } else return muleMessage.getPayload();
     }
-
-
-	/*
-	@Processor
-	public void cookieTest(@OutboundHeaders Map<String, Object> headers, MuleMessage muleMessage) {
-
-
-		String cookieHeader = muleMessage.getInboundProperty("cookie");
-
-        String[] cookies = cookieHeader.split(";");
-
-
-
-        Cookie cookie = new Cookie("localhost:8080", COOKIE_NAME, "123.avc.asd");
-		headers.put(org.mule.module.http.api.HttpHeaders.Names.SET_COOKIE, cookie);
-    }
-    */
-
-    @Processor
-    public void objectStoreTest(MuleContext context, String key) throws ObjectStoreException {
-        ObjectStore<String> store = context.getObjectStoreManager().getObjectStore("oidc-connector");
-        store.store(key, UUID.randomUUID().toString());
-        store.retrieve("moritz");
-    }
-
 
     public ConnectorConfig getConfig() {
         return config;
@@ -214,4 +199,11 @@ public class OIDCTokenValidatorConnector {
 		this.client = client;
 	}
 
+    public MuleContext getMuleContext() {
+        return muleContext;
+    }
+
+    public void setMuleContext(MuleContext muleContext) {
+        this.muleContext = muleContext;
+    }
 }
