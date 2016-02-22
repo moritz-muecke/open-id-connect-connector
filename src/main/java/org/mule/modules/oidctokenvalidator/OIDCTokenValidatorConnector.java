@@ -15,6 +15,7 @@ import com.nimbusds.oauth2.sdk.id.ClientID;
 import org.apache.commons.httpclient.Cookie;
 import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
+import org.mule.api.MuleException;
 import org.mule.api.MuleMessage;
 import org.mule.api.annotations.Config;
 import org.mule.api.annotations.Connector;
@@ -71,7 +72,7 @@ public class OIDCTokenValidatorConnector {
 	 * oidc-token-validator:online-token-validation}
      * 
      * @param callback injected by devkit
-     * @param muleMessage injected by devkit
+     * @param muleEvent injected by devkit
      * @param headers Authorization header where the bearer token is located
      * @param introspectionEndpoint The path of the introspection endpoint
      * @param clientID Any Client-ID from the SSO to prevent token scanning attacks
@@ -83,13 +84,15 @@ public class OIDCTokenValidatorConnector {
     @Processor(intercepting = true)
     public Object onlineTokenValidation(
     		SourceCallback callback, 
-    		MuleMessage muleMessage, 
+    		MuleEvent muleEvent,
     		@InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, 
     		String introspectionEndpoint, 
     		@FriendlyName("Client ID")String clientID, 
     		String clientSecret,
     		boolean claimExtraction) throws HTTPConnectException {
-    	config.setClientId(clientID);
+
+		MuleMessage muleMessage = muleEvent.getMessage();
+		config.setClientId(clientID);
     	config.setClientSecret(clientSecret);
     	config.setIntrospectionEndpoint(introspectionEndpoint);
     	try {
@@ -97,7 +100,7 @@ public class OIDCTokenValidatorConnector {
 			if (claimExtraction) {
 				muleMessage.setInvocationProperty("tokenClaims", claims);
 			}
-			return callback.process(muleMessage);
+            return callback.processEvent(muleEvent).getMessage().getPayload();
 		} catch (TokenValidationException e) {
 			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.UNAUTHORIZED.getStatusCode());
 			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.UNAUTHORIZED.getReasonPhrase());
@@ -142,9 +145,8 @@ public class OIDCTokenValidatorConnector {
 			Map<String, Object> claims = client.localTokenValidation(headers.get(HttpHeaders.AUTHORIZATION));
 			if (claimExtraction) {
                 muleMessage.setInvocationProperty("tokenClaims", claims);
-				muleMessage.addProperties(claims, PropertyScope.OUTBOUND);
             }
-			return callback.processEvent(muleEvent);
+			return callback.processEvent(muleEvent).getMessage().getPayload();
 		} catch (TokenValidationException e) {
 			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.UNAUTHORIZED.getStatusCode());
 			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.UNAUTHORIZED.getReasonPhrase());
@@ -182,6 +184,12 @@ public class OIDCTokenValidatorConnector {
             return callback.process(muleMessage);
         } else return muleMessage.getPayload();
     }
+
+	@Processor(intercepting = true)
+	public Object eventCallbackTest(SourceCallback callback, MuleEvent muleEvent) throws MuleException {
+		muleEvent.getMessage().setInvocationProperty("Hallo", "Welt");
+		return callback.processEvent(muleEvent).getMessage();
+	}
 
     public ConnectorConfig getConfig() {
         return config;
