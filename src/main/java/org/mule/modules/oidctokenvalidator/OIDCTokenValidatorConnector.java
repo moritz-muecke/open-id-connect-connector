@@ -30,6 +30,7 @@ import org.mule.api.store.ListableObjectStore;
 import org.mule.api.store.ObjectStore;
 import org.mule.api.store.ObjectStoreException;
 import org.mule.api.transport.PropertyScope;
+import org.mule.module.http.api.HttpConstants;
 import org.mule.modules.oidctokenvalidator.client.OpenIdConnectClientImpl;
 import org.mule.modules.oidctokenvalidator.client.OpenIdConnectClient;
 import org.mule.modules.oidctokenvalidator.client.oidc.*;
@@ -45,8 +46,6 @@ import org.mule.transport.http.CookieHelper;
 public class OIDCTokenValidatorConnector {
 
 	private OpenIdConnectClient client;
-	private final static String HTTP_STATUS = "http.status";
-	private final static String HTTP_REASON = "http.reason";
 
 	@Config
     ConnectorConfig config;
@@ -102,19 +101,16 @@ public class OIDCTokenValidatorConnector {
 			}
             return callback.processEvent(muleEvent).getMessage().getPayload();
 		} catch (TokenValidationException e) {
-			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.UNAUTHORIZED.getStatusCode());
-			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.UNAUTHORIZED.getReasonPhrase());
+            changeResponseStatus(muleMessage, Response.Status.UNAUTHORIZED);
 			muleMessage.setPayload(e.getMessage());
 			return muleMessage.getPayload();
 		} catch (HTTPConnectException e) {
-			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.SERVICE_UNAVAILABLE.getStatusCode());
-			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.SERVICE_UNAVAILABLE.getReasonPhrase());
-			muleMessage.setPayload(e.getMessage());
+			changeResponseStatus(muleMessage, Response.Status.SERVICE_UNAVAILABLE);
+            muleMessage.setPayload(e.getMessage());
 			throw e;
 		} catch (Exception e) {
-			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.BAD_REQUEST.getStatusCode());
-			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.BAD_REQUEST.getReasonPhrase());
-			muleMessage.setPayload(e.getMessage());	
+			changeResponseStatus(muleMessage, Response.Status.BAD_REQUEST);
+            muleMessage.setPayload(e.getMessage());
 			return muleMessage.getPayload();
 		}
     }
@@ -148,28 +144,26 @@ public class OIDCTokenValidatorConnector {
             }
 			return callback.processEvent(muleEvent).getMessage().getPayload();
 		} catch (TokenValidationException e) {
-			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.UNAUTHORIZED.getStatusCode());
-			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.UNAUTHORIZED.getReasonPhrase());
+			changeResponseStatus(muleMessage, Response.Status.UNAUTHORIZED);
 			muleMessage.setPayload(e.getMessage());	
 			return muleMessage.getPayload();
 		} catch (Exception e) {
-			muleMessage.setOutboundProperty(HTTP_STATUS, Response.Status.BAD_REQUEST.getStatusCode());
-			muleMessage.setOutboundProperty(HTTP_REASON, Response.Status.BAD_REQUEST.getReasonPhrase());
+            changeResponseStatus(muleMessage, Response.Status.BAD_REQUEST);
 			muleMessage.setPayload(e.getMessage());	
 			return muleMessage.getPayload();
 		}
     }
-    
+
     /**
      * Connector works as a OIDC relying party
-     * 
+     *
      * {@sample.xml ../../../doc/oidc-token-validator-connector.xml.sample
 	 * oidc-token-validator:act-as-relying-party}
-     * 
+     *
      * @param callback injected by devkit
      * @param muleEvent injected by devkit
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
-     * @throws Exception 
+     * @throws Exception
      */
     @Processor(intercepting = true)
     public Object actAsRelyingParty(SourceCallback callback, MuleEvent muleEvent, String redirectUri, String clientId, @Password String clientSecret) throws Exception {
@@ -185,10 +179,9 @@ public class OIDCTokenValidatorConnector {
         } else return muleMessage.getPayload();
     }
 
-	@Processor(intercepting = true)
-	public Object eventCallbackTest(SourceCallback callback, MuleEvent muleEvent) throws MuleException {
-		muleEvent.getMessage().setInvocationProperty("Hallo", "Welt");
-		return callback.processEvent(muleEvent).getMessage();
+	private void changeResponseStatus(MuleMessage message, Response.StatusType statusType) {
+		message.setOutboundProperty(HttpConstants.ResponseProperties.HTTP_STATUS_PROPERTY, statusType.getStatusCode());
+		message.setOutboundProperty(HttpConstants.ResponseProperties.HTTP_REASON_PROPERTY, statusType.getReasonPhrase());
 	}
 
     public ConnectorConfig getConfig() {
