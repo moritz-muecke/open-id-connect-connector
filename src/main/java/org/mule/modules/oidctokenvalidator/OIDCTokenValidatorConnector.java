@@ -1,9 +1,6 @@
 package org.mule.modules.oidctokenvalidator;
-import java.io.Serializable;
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import javax.inject.Inject;
 import javax.ws.rs.core.HttpHeaders;
@@ -12,10 +9,8 @@ import javax.ws.rs.core.Response;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
 import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.id.ClientID;
-import org.apache.commons.httpclient.Cookie;
 import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
-import org.mule.api.MuleException;
 import org.mule.api.MuleMessage;
 import org.mule.api.annotations.Config;
 import org.mule.api.annotations.Connector;
@@ -24,14 +19,10 @@ import org.mule.api.annotations.display.FriendlyName;
 import org.mule.api.annotations.display.Password;
 import org.mule.api.annotations.lifecycle.Start;
 import org.mule.api.annotations.param.InboundHeaders;
-import org.mule.api.annotations.param.OutboundHeaders;
 import org.mule.api.callback.SourceCallback;
 import org.mule.api.store.ListableObjectStore;
-import org.mule.api.store.ObjectStore;
 import org.mule.api.store.ObjectStoreException;
-import org.mule.api.transport.PropertyScope;
 import org.mule.module.http.api.HttpConstants;
-import org.mule.modules.oidctokenvalidator.client.OpenIdConnectClientImpl;
 import org.mule.modules.oidctokenvalidator.client.OpenIdConnectClient;
 import org.mule.modules.oidctokenvalidator.client.oidc.*;
 import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
@@ -39,7 +30,6 @@ import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
-import org.mule.transport.http.CookieHelper;
 
 
 @Connector(name="oidc-token-validator", friendlyName="OIDCTokenValidator")
@@ -57,10 +47,10 @@ public class OIDCTokenValidatorConnector {
     public void init() throws MetaDataInitializationException, ObjectStoreException {
         SingleSignOnConfig ssoConfig = new SingleSignOnConfig(config);
         ListableObjectStore<String> tokenStore = muleContext.getObjectStoreManager().getObjectStore("oidc-connector");
-        TokenStorage storage = new TokenStorageImpl(tokenStore);
-        TokenRequester requester = new TokenRequesterImpl(ssoConfig);
+        TokenStorage storage = new TokenStorage(tokenStore);
+        TokenRequester requester = new TokenRequester(ssoConfig);
         TokenValidator validator = new TokenValidator(ssoConfig);
-    	client = new OpenIdConnectClientImpl(config, ssoConfig, validator, requester, storage);
+    	client = new OpenIdConnectClient(config, ssoConfig, validator, requester, storage);
     }
     
         
