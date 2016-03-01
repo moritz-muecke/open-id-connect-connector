@@ -36,6 +36,7 @@ import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 public class OIDCTokenValidatorConnector {
 
 	private OpenIdConnectClient client;
+    private SingleSignOnConfig ssoConfig;
 
 	@Config
     ConnectorConfig config;
@@ -45,12 +46,9 @@ public class OIDCTokenValidatorConnector {
 
     @Start
     public void init() throws MetaDataInitializationException, ObjectStoreException {
-        SingleSignOnConfig ssoConfig = new SingleSignOnConfig(config);
-        ListableObjectStore<String> tokenStore = muleContext.getObjectStoreManager().getObjectStore("oidc-connector");
-        TokenStorage storage = new TokenStorage(tokenStore);
-        TokenRequester requester = new TokenRequester(ssoConfig);
+        ssoConfig = new SingleSignOnConfig(config);
         TokenValidator validator = new TokenValidator(ssoConfig);
-    	client = new OpenIdConnectClient(config, ssoConfig, validator, requester, storage);
+    	client = new OpenIdConnectClient(config, ssoConfig, validator);
     }
     
         
@@ -156,17 +154,38 @@ public class OIDCTokenValidatorConnector {
      * @throws Exception
      */
     @Processor(intercepting = true)
-    public Object actAsRelyingParty(SourceCallback callback, MuleEvent muleEvent, String redirectUri, String clientId, @Password String clientSecret) throws Exception {
-
+    public Object actAsRelyingParty(
+            SourceCallback callback,
+            MuleEvent muleEvent,
+            String redirectUri,
+            String clientId,
+            @Password String clientSecret,
+            boolean instantRefresh) throws Exception {
         MuleMessage muleMessage = muleEvent.getMessage();
-
         ClientSecretBasic clientSecretBasic = new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret));
         client.getSsoConfig().setRedirectUri(new URI(redirectUri));
         client.getSsoConfig().setClientSecretBasic(clientSecretBasic);
 
-        if (client.actAsRelyingParty(muleMessage)) {
-            return callback.process(muleMessage);
-        } else return muleMessage.getPayload();
+        ListableObjectStore<String> tokenStore = muleContext.getObjectStoreManager().getObjectStore("token-cookie-store");
+        Storage<String> tokenStorage = new TokenStorage(tokenStore);
+        ListableObjectStore<RedirectData> redirectStore = muleContext.getObjectStoreManager().getObjectStore("redirect-cookie-store");
+        Storage<RedirectData> redirectStorage = new RedirectDataStorage(redirectStore);
+        TokenRequester requester = new TokenRequester(ssoConfig);
+        RelyingPartyHandler handler = new RelyingPartyHandler(muleMessage, requester, tokenStorage, redirectStorage, instantRefresh);
+
+        try {
+            client.actAsRelyingParty(handler);
+
+            int status = muleMessage.getOutboundProperty(HttpConstants.ResponseProperties.HTTP_STATUS_PROPERTY);
+
+            if (status == HttpConstants.HttpStatus.MOVED_TEMPORARILY.getStatusCode()) {
+                return muleMessage.getPayload();
+            } else return callback.process(muleMessage);
+        } catch (Exception e) {
+            changeResponseStatus(muleMessage, Response.Status.INTERNAL_SERVER_ERROR);
+            muleMessage.setPayload(e.getMessage());
+            return muleMessage.getPayload();
+        }
     }
 
 	private void changeResponseStatus(MuleMessage message, Response.StatusType statusType) {

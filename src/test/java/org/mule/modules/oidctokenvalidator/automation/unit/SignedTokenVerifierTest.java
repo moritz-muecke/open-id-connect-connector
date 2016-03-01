@@ -6,7 +6,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileReader;
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Properties;
@@ -16,7 +15,7 @@ import net.minidev.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.mule.modules.oidctokenvalidator.automation.unit.util.RSAKeyGenerator;
-import org.mule.modules.oidctokenvalidator.client.oidc.SignedTokenVerifier;
+import org.mule.modules.oidctokenvalidator.client.oidc.TokenVerifier;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
 import com.nimbusds.jose.JWSAlgorithm;
@@ -50,12 +49,12 @@ public class SignedTokenVerifierTest {
 	
 	@Test
 	public void isActiveShouldReturnTrue() throws Exception {
-		assertTrue(SignedTokenVerifier.isActive(System.currentTimeMillis() + 10000, System.currentTimeMillis() - 10000));
+		assertTrue(TokenVerifier.isActive(System.currentTimeMillis() + 10000, System.currentTimeMillis() - 10000));
 	}
 	
 	@Test
 	public void isActiveShouldReturnFalse() throws Exception {
-		assertFalse(SignedTokenVerifier.isActive(System.currentTimeMillis() - 10000, System.currentTimeMillis() + 10000));
+		assertFalse(TokenVerifier.isActive(System.currentTimeMillis() - 10000, System.currentTimeMillis() + 10000));
 	}
 	
 	@Test(expected=TokenValidationException.class)
@@ -65,7 +64,7 @@ public class SignedTokenVerifierTest {
 		json.put("nbf", 0);
 		SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), JWTClaimsSet.parse(json));
 		jwt.sign(signer);
-		SignedTokenVerifier.verifyToken(verifier, jwt, props.getProperty("sso-url"));
+		TokenVerifier.verifyAccessToken(verifier, jwt, props.getProperty("sso-url"));
 	}
 	
 	@Test
@@ -75,6 +74,6 @@ public class SignedTokenVerifierTest {
 		json.put("nbf", 0);
 		SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.RS512), JWTClaimsSet.parse(json));
 		jwt.sign(signer);
-		assertTrue(SignedTokenVerifier.verifyToken(verifier, jwt, props.getProperty("sso-url")) instanceof JWTClaimsSet);
+		assertTrue(TokenVerifier.verifyAccessToken(verifier, jwt, props.getProperty("sso-url")) instanceof JWTClaimsSet);
 	}
 }

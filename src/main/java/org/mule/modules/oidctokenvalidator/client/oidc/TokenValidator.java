@@ -23,10 +23,10 @@ import com.nimbusds.oauth2.sdk.token.AccessToken;
 
 public class TokenValidator {
 
-	private SingleSignOnConfig metaDataProvider;
+	private SingleSignOnConfig ssoConfig;
 
 	public TokenValidator(SingleSignOnConfig provider) {
-		metaDataProvider = provider;
+		ssoConfig = provider;
 	}
 
 	public JSONObject introspectionTokenValidation(String authHeader)
@@ -59,7 +59,7 @@ public class TokenValidator {
 			}
 			return claims;
 		} catch (IOException e) {
-			throw new HTTPConnectException(String.format("Could not connect to the identity provider %s - Error: %s", metaDataProvider.getSsoUri(), e.getMessage()));
+			throw new HTTPConnectException(String.format("Could not connect to the identity provider %s - Error: %s", ssoConfig.getSsoUri(), e.getMessage()));
 		} catch (Exception e) {
 			throw new TokenValidationException(e.getMessage());
 		}
@@ -69,10 +69,7 @@ public class TokenValidator {
 			throws TokenValidationException {
 		try {
 			AccessToken accessToken = AccessToken.parse(authHeader);
-			SignedJWT jwt = SignedJWT.parse(accessToken.getValue());
-			JWSVerifier verifier = new RSASSAVerifier(
-					metaDataProvider.getRsaPublicKey());
-			return SignedTokenVerifier.verifyToken(verifier, jwt, metaDataProvider.getSsoUri().toString());
+			return TokenVerifier.verifyAccessToken(accessToken, ssoConfig.getRsaPublicKey() ,ssoConfig.getSsoUri().toString());
 		} catch (Exception e) {
 			throw new TokenValidationException(e.getMessage());
 		}
@@ -80,8 +77,8 @@ public class TokenValidator {
 	
 	public TokenIntrospectionRequest createTokenIntrospectionRequest(AccessToken accessToken) {
 		return new TokenIntrospectionRequest(
-				metaDataProvider.getIntrospectionUri(),
-				metaDataProvider.getClientSecretBasic(), 
+				ssoConfig.getIntrospectionUri(),
+				ssoConfig.getClientSecretBasic(),
 				accessToken);
 	}
 }

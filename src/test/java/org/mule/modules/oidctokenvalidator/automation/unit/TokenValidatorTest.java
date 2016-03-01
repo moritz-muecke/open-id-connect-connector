@@ -15,7 +15,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.mule.modules.oidctokenvalidator.automation.unit.util.RSAKeyGenerator;
-import org.mule.modules.oidctokenvalidator.client.oidc.SignedTokenVerifier;
+import org.mule.modules.oidctokenvalidator.client.oidc.TokenVerifier;
 import org.mule.modules.oidctokenvalidator.client.oidc.TokenValidator;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.powermock.api.mockito.PowerMockito;
@@ -32,7 +32,7 @@ import com.nimbusds.oauth2.sdk.http.HTTPResponse;
 import com.nimbusds.oauth2.sdk.token.AccessToken;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(SignedTokenVerifier.class)
+@PrepareForTest(TokenVerifier.class)
 public class TokenValidatorTest extends Mockito{
 	
 	private Properties props;
@@ -70,7 +70,7 @@ public class TokenValidatorTest extends Mockito{
 	
 	@Test
 	public void localTokenValidationShouldReturnTokenClaims() throws Exception {
-		PowerMockito.mockStatic(SignedTokenVerifier.class);
+		PowerMockito.mockStatic(TokenVerifier.class);
 		
 		JSONObject json = new JSONObject();
 		json.put("iss", props.getProperty("sso-url"));
@@ -82,7 +82,7 @@ public class TokenValidatorTest extends Mockito{
 		when(metaDataProvider.getRsaPublicKey()).thenReturn((RSAPublicKey)RSAKeyGenerator.keyPairGenerator().getPublic());
 		when(metaDataProvider.getSsoUri()).thenReturn(new URI(props.getProperty("sso-url")));
 
-		Mockito.when(SignedTokenVerifier.verifyToken(
+		Mockito.when(TokenVerifier.verifyAccessToken(
 				Mockito.any(JWSVerifier.class), 
 				Mockito.any(SignedJWT.class), 
 				Mockito.any(String.class))).thenReturn(givenClaims);

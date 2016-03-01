@@ -1,9 +1,11 @@
 package org.mule.modules.oidctokenvalidator.client.oidc;
 
 import com.nimbusds.oauth2.sdk.*;
+import com.nimbusds.oauth2.sdk.auth.ClientAuthentication;
 import com.nimbusds.oauth2.sdk.http.HTTPResponse;
 import com.nimbusds.oauth2.sdk.id.ClientID;
 import com.nimbusds.oauth2.sdk.id.State;
+import com.nimbusds.oauth2.sdk.token.RefreshToken;
 import com.nimbusds.openid.connect.sdk.AuthenticationRequest;
 import com.nimbusds.openid.connect.sdk.Nonce;
 import com.nimbusds.openid.connect.sdk.OIDCTokenResponse;
@@ -23,7 +25,7 @@ public class TokenRequester {
         ssoConfig = config;
     }
 
-    public URI buildRedirectUri() {
+    public AuthenticationRequest buildRedirectRequest() {
         State state = new State();
         Nonce nonce = new Nonce();
         Scope scope = Scope.parse("openid");
@@ -33,8 +35,8 @@ public class TokenRequester {
                 ssoConfig.getProviderMetadata().getAuthorizationEndpointURI(),
                 new ResponseType(ResponseType.Value.CODE),
                 scope, clientId, ssoConfig.getRedirectUri(), state, nonce);
-
-        return authenticationRequest.toURI();
+        
+        return authenticationRequest;
     }
 
     public OIDCTokens requestTokensFromSso(String authCode) throws RequestTokenFromSsoException {
@@ -55,7 +57,25 @@ public class TokenRequester {
         }
     }
 
-    public OIDCTokens requestNewRefreshToken(OIDCTokens tokens) {
-        return null;
+    public OIDCTokens refreshTokenSet(OIDCTokens tokens) throws RequestTokenFromSsoException, IOException, ParseException {
+        RefreshToken refreshToken = tokens.getRefreshToken();
+        AuthorizationGrant refreshTokenGrant = new RefreshTokenGrant(refreshToken);
+
+        ClientAuthentication clientAuth = ssoConfig.getClientSecretBasic();
+
+        URI tokenEndpoint = ssoConfig.getProviderMetadata().getTokenEndpointURI();
+
+        TokenRequest request = new TokenRequest(tokenEndpoint, clientAuth, refreshTokenGrant);
+        TokenResponse response = OIDCTokenResponseParser.parse(request.toHTTPRequest().send());
+
+        if(response instanceof TokenErrorResponse) {
+            throw new RequestTokenFromSsoException("Refresh tokens from SSO failed");
+        }
+        OIDCTokenResponse oidcTokenResponse = (OIDCTokenResponse) response;
+        return oidcTokenResponse.getOIDCTokens();
+    }
+
+    public SingleSignOnConfig getSsoConfig() {
+        return ssoConfig;
     }
 }

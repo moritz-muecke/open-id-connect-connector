@@ -1,10 +1,10 @@
 package org.mule.modules.oidctokenvalidator.client.oidc;
 
+import org.mule.api.annotations.lifecycle.Stop;
 import org.mule.api.store.ObjectStore;
 import org.mule.api.store.ObjectStoreException;
 
-public class TokenStorage {
-
+public class TokenStorage implements Storage<String>{
 
     private ObjectStore<String> tokenStore;
 
@@ -12,13 +12,18 @@ public class TokenStorage {
         tokenStore = store;
     }
 
-    public String getTokens(String storageEntryId) throws ObjectStoreException {
-        if (tokenStore.contains(storageEntryId)){
-            return tokenStore.retrieve(storageEntryId);
-        } else return null;
+    @Override
+    public void storeData(String entryId, String tokenString) throws ObjectStoreException {
+        if (tokenStore.contains(entryId)) {
+            tokenStore.remove(entryId);
+        }
+        tokenStore.store(entryId, tokenString);
     }
 
-    public void storeTokens(String storageEntryId, String tokens) throws ObjectStoreException {
-        tokenStore.store(storageEntryId, tokens);
+    @Override
+    public String getData(String entryId) throws ObjectStoreException {
+        if (tokenStore.contains(entryId)){
+            return tokenStore.retrieve(entryId);
+        } else return null;
     }
 }
