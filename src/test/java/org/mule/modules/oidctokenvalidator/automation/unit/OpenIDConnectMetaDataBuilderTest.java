@@ -31,7 +31,7 @@ public class OpenIDConnectMetaDataBuilderTest extends Mockito{
 		props = new Properties();
 		props.load(new FileReader(new File(this.getClass().getResource("unittest.properties").getPath()))); 
 	}
-	
+	/*
 	@Test
 	public void provideMetadataManuallyShouldReturnMetaData() throws Exception{
         OpenIDConnectMetaDataBuilder metaDataBuilder = new OpenIDConnectMetaDataBuilder(new URI(props.getProperty("sso-url")));
@@ -88,5 +88,5 @@ public class OpenIDConnectMetaDataBuilderTest extends Mockito{
 		doThrow(new ParseException("Could not parse JSON response")).when(metaDataBuilder).providePublicKey(invalidMetaData);
 		metaDataBuilder.providePublicKey(invalidMetaData);
 	}
-	
+	*/
 }

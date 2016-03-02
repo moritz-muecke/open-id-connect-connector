@@ -1,6 +1,5 @@
-package org.mule.modules.oidctokenvalidator.client.oidc;
+package org.mule.modules.oidctokenvalidator.client.relyingparty;
 
-import org.mule.api.annotations.lifecycle.Stop;
 import org.mule.api.store.ObjectStore;
 import org.mule.api.store.ObjectStoreException;
 
@@ -25,5 +24,17 @@ public class TokenStorage implements Storage<String>{
         if (tokenStore.contains(entryId)){
             return tokenStore.retrieve(entryId);
         } else return null;
+    }
+
+    @Override
+    public boolean containsData(String entryId) throws ObjectStoreException {
+        return entryId != null && tokenStore.contains(entryId);
+    }
+
+    @Override
+    public void removeData(String entryId) throws ObjectStoreException {
+        if (tokenStore.contains(entryId)){
+            tokenStore.remove(entryId);
+        }
     }
 }

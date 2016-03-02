@@ -21,7 +21,7 @@ import org.mule.modules.oidctokenvalidator.config.OpenIDConnectMetaDataBuilder;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 
 public class SingleSignOnConfigTest extends Mockito{
-	
+	/*
 	private Properties props;
 	
 	@Before
@@ -58,4 +58,5 @@ public class SingleSignOnConfigTest extends Mockito{
         PublicKey publicKey = (PublicKey) kFactory.generatePublic(spec);
         return (RSAPublicKey)publicKey;
 	}
+	*/
 }

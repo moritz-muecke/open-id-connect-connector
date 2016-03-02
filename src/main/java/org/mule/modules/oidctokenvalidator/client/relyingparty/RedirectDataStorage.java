@@ -1,6 +1,5 @@
-package org.mule.modules.oidctokenvalidator.client.oidc;
+package org.mule.modules.oidctokenvalidator.client.relyingparty;
 
-import com.nimbusds.oauth2.sdk.TokenRequest;
 import org.mule.api.store.ObjectStore;
 import org.mule.api.store.ObjectStoreException;
 
@@ -28,5 +27,17 @@ public class RedirectDataStorage implements Storage<RedirectData> {
         if (redirectDataStore.contains(entryId)){
             return redirectDataStore.retrieve(entryId);
         } else return null;
+    }
+
+    @Override
+    public boolean containsData(String entryId) throws ObjectStoreException {
+        return entryId != null && redirectDataStore.contains(entryId);
+    }
+
+    @Override
+    public void removeData(String entryId) throws ObjectStoreException {
+        if (redirectDataStore.contains(entryId)){
+            redirectDataStore.remove(entryId);
+        }
     }
 }

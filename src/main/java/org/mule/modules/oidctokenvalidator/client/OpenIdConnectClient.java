@@ -5,29 +5,18 @@ import com.nimbusds.oauth2.sdk.ParseException;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
 import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.id.ClientID;
-import com.nimbusds.openid.connect.sdk.token.OIDCTokens;
-import org.apache.commons.httpclient.Cookie;
-import org.mule.api.MuleMessage;
 import org.mule.api.store.ObjectStoreException;
-import org.mule.module.http.api.HttpConstants.HttpStatus;
-import org.mule.module.http.api.HttpConstants.ResponseProperties;
-import org.mule.module.http.api.HttpHeaders;
-import org.mule.modules.oidctokenvalidator.client.oidc.RelyingPartyHandler;
-import org.mule.modules.oidctokenvalidator.client.oidc.TokenRequester;
-import org.mule.modules.oidctokenvalidator.client.oidc.TokenStorage;
-import org.mule.modules.oidctokenvalidator.client.oidc.TokenValidator;
+import org.mule.modules.oidctokenvalidator.client.relyingparty.RelyingPartyHandler;
+import org.mule.modules.oidctokenvalidator.client.tokenvalidation.TokenValidator;
 import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
-import org.mule.modules.oidctokenvalidator.exception.RequestTokenFromSsoException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.Map;
-import java.util.UUID;
 
 public class OpenIdConnectClient {
 
@@ -66,11 +55,14 @@ public class OpenIdConnectClient {
     }
 
     public void actAsRelyingParty(RelyingPartyHandler relyingPartyHandler) throws ObjectStoreException, ParseException, java.text.ParseException {
+
         if (relyingPartyHandler.hasTokenCookieAndIsStored()) {
             relyingPartyHandler.handleRequest();
         } else if (relyingPartyHandler.hasRedirectCookieAndIsStored()) {
             relyingPartyHandler.handleTokenRequest();
-        } else relyingPartyHandler.handleRedirect();
+        } else {
+            relyingPartyHandler.handleRedirect();
+        }
     }
 
     public SingleSignOnConfig getSsoConfig() {

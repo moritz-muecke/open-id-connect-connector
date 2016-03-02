@@ -1,22 +1,17 @@
-package org.mule.modules.oidctokenvalidator.client.oidc;
+package org.mule.modules.oidctokenvalidator.client.relyingparty;
 
-import com.nimbusds.jose.JWSVerifier;
-import com.nimbusds.jose.crypto.RSASSAVerifier;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.oauth2.sdk.ParseException;
-import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;
 import com.nimbusds.openid.connect.sdk.AuthenticationRequest;
 import com.nimbusds.openid.connect.sdk.OIDCTokenResponse;
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens;
 import net.minidev.json.JSONObject;
 import org.apache.commons.httpclient.Cookie;
-import org.apache.cxf.common.i18n.Exception;
 import org.mule.api.MuleMessage;
 import org.mule.api.store.ObjectStoreException;
 import org.mule.module.http.api.HttpConstants;
 import org.mule.module.http.api.HttpHeaders;
+import org.mule.modules.oidctokenvalidator.client.tokenvalidation.TokenVerifier;
 import org.mule.modules.oidctokenvalidator.exception.RequestTokenFromSsoException;
 
 import java.io.IOException;
@@ -53,12 +48,12 @@ public class RelyingPartyHandler {
 
     public boolean hasTokenCookieAndIsStored() throws ObjectStoreException {
         String cookieHeader = muleMessage.getInboundProperty("cookie");
-        return tokenStorage.getData(cookieExtractor(cookieHeader, TOKEN_COOKIE_NAME)) != null;
+        return tokenStorage.containsData(cookieExtractor(cookieHeader, TOKEN_COOKIE_NAME));
     }
 
     public boolean hasRedirectCookieAndIsStored() throws ObjectStoreException {
         String cookieHeader = muleMessage.getInboundProperty("cookie");
-        return tokenStorage.getData(cookieExtractor(cookieHeader, REDIRECT_COOKIE_NAME)) != null;
+        return redirectDataStorage.containsData(cookieExtractor(cookieHeader, REDIRECT_COOKIE_NAME));
     }
 
     public void setInstantRefresh(boolean instantRefresh) {
@@ -67,17 +62,15 @@ public class RelyingPartyHandler {
 
     public void handleRequest() throws ObjectStoreException, ParseException, java.text.ParseException {
         String cookieHeader = muleMessage.getInboundProperty("cookie");
-        String entryId = cookieExtractor(cookieHeader, TOKEN_COOKIE_NAME);
-        String tokenString = tokenStorage.getData(entryId);
+        String tokenStorageEntryId = cookieExtractor(cookieHeader, TOKEN_COOKIE_NAME);
+        String redirectStorageEntryId = cookieExtractor(cookieHeader, REDIRECT_COOKIE_NAME);
+        String tokenString = tokenStorage.getData(tokenStorageEntryId);
         JSONObject jsonObject = JSONObjectUtils.parse(tokenString);
         OIDCTokens tokens = OIDCTokenResponse.parse(jsonObject).getOIDCTokens();
-        if (instantRefresh || !TokenVerifier.isActive(tokens.getAccessToken())) {
-            try {
-                OIDCTokens refreshedTokenSet = tokenRequester.refreshTokenSet(tokens);
-                storeAndSetTokenCookie(entryId, refreshedTokenSet);
-            } catch (RequestTokenFromSsoException | IOException e) {
-                handleRedirect();
-            }
+        if (instantRefresh) {
+            refreshTokens(tokens, tokenStorageEntryId, redirectStorageEntryId);
+        } else if(!TokenVerifier.isActive(tokens.getAccessToken())) {
+            refreshTokens(tokens, tokenStorageEntryId, redirectStorageEntryId);
         }
     }
 
@@ -94,28 +87,41 @@ public class RelyingPartyHandler {
         RedirectData redirectData = redirectDataStorage.getData(redirectEntryId);
         Map<String, String> queryParams = muleMessage.getInboundProperty("http.query.params");
         String queryState = queryParams.get("state");
-        if (!redirectData.getState().getValue().equals(queryState)) {
+        String authCode = queryParams.get("code");
+        if (!redirectData.getState().getValue().equals(queryState) || authCode == null) {
             handleRedirect();
         }
-        String authCode = queryParams.get("code");
         try {
-            OIDCTokens tokens = tokenRequester.requestTokensFromSso(authCode);
+            OIDCTokens tokens = tokenRequester.requestTokensFromSso(authCode, redirectData.getNonce());
             String tokenEntryId = UUID.randomUUID().toString();
             storeAndSetTokenCookie(tokenEntryId, tokens);
+            redirectDataStorage.removeData(redirectEntryId);
         } catch (RequestTokenFromSsoException e) {
             handleRedirect();
         }
     }
 
+    private void refreshTokens(OIDCTokens tokens, String tokenStorageEntryId, String redirectStorageEntryId) throws ObjectStoreException, ParseException {
+        try {
+            OIDCTokens refreshedTokenSet = tokenRequester.refreshTokenSet(tokens);
+            storeAndSetTokenCookie(tokenStorageEntryId, refreshedTokenSet);
+        } catch (RequestTokenFromSsoException | IOException e) {
+            tokenStorage.removeData(tokenStorageEntryId);
+            redirectDataStorage.removeData(redirectStorageEntryId);
+            handleRedirect();
+        }
+    }
+
+
     public void storeAndSetRedirectCookie(RedirectData redirectData) throws ObjectStoreException {
         redirectDataStorage.storeData(redirectData.getCookieId(), redirectData);
-        Cookie cookie = new Cookie("localhost:8080", REDIRECT_COOKIE_NAME, redirectData.getCookieId());
+        Cookie cookie = new Cookie(tokenRequester.getSsoConfig().getRedirectUri().toString(), REDIRECT_COOKIE_NAME, redirectData.getCookieId());
         muleMessage.setOutboundProperty(HttpHeaders.Names.SET_COOKIE, cookie);
     }
 
     public void storeAndSetTokenCookie(String entryId, OIDCTokens tokens) throws ObjectStoreException {
         tokenStorage.storeData(entryId, tokens.toJSONObject().toJSONString());
-        Cookie cookie = new Cookie("localhost:8080", TOKEN_COOKIE_NAME, entryId);
+        Cookie cookie = new Cookie(tokenRequester.getSsoConfig().getRedirectUri().toString(), TOKEN_COOKIE_NAME, entryId);
         muleMessage.setOutboundProperty(HttpHeaders.Names.SET_COOKIE, cookie);
     }
 
@@ -127,7 +133,7 @@ public class RelyingPartyHandler {
 
     private String cookieExtractor(String header, String cookieName) {
         if (header != null){
-            return Arrays.stream(header.split(";"))
+            return Arrays.stream(header.split("; "))
                     .filter(c -> c.split("=")[0].equals(cookieName))
                     .map(c -> c.split("=")[1])
                     .findFirst().orElse(null);

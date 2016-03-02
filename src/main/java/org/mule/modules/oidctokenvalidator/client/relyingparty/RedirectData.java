@@ -1,4 +1,4 @@
-package org.mule.modules.oidctokenvalidator.client.oidc;
+package org.mule.modules.oidctokenvalidator.client.relyingparty;
 
 import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.openid.connect.sdk.Nonce;

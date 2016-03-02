@@ -1,6 +1,7 @@
 package org.mule.modules.oidctokenvalidator;
 import java.net.URI;
 import java.util.Map;
+import java.util.Set;
 
 import javax.inject.Inject;
 import javax.ws.rs.core.HttpHeaders;
@@ -24,7 +25,8 @@ import org.mule.api.store.ListableObjectStore;
 import org.mule.api.store.ObjectStoreException;
 import org.mule.module.http.api.HttpConstants;
 import org.mule.modules.oidctokenvalidator.client.OpenIdConnectClient;
-import org.mule.modules.oidctokenvalidator.client.oidc.*;
+import org.mule.modules.oidctokenvalidator.client.relyingparty.*;
+import org.mule.modules.oidctokenvalidator.client.tokenvalidation.*;
 import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
@@ -37,6 +39,7 @@ public class OIDCTokenValidatorConnector {
 
 	private OpenIdConnectClient client;
     private SingleSignOnConfig ssoConfig;
+    private static final String HTTP_STATUS = HttpConstants.ResponseProperties.HTTP_STATUS_PROPERTY;
 
 	@Config
     ConnectorConfig config;
@@ -176,14 +179,17 @@ public class OIDCTokenValidatorConnector {
         try {
             client.actAsRelyingParty(handler);
 
-            int status = muleMessage.getOutboundProperty(HttpConstants.ResponseProperties.HTTP_STATUS_PROPERTY);
-
-            if (status == HttpConstants.HttpStatus.MOVED_TEMPORARILY.getStatusCode()) {
+            Set<String> outboundProps = muleMessage.getOutboundPropertyNames();
+            if (outboundProps.contains(HTTP_STATUS) &&
+                    (int)muleMessage.getOutboundProperty(HTTP_STATUS) == Response.Status.FOUND.getStatusCode()) {
                 return muleMessage.getPayload();
-            } else return callback.process(muleMessage);
+            } else {
+                return callback.process(muleMessage);
+            }
         } catch (Exception e) {
+            System.out.println("An error occured: " + e.getCause() + e.getMessage());
             changeResponseStatus(muleMessage, Response.Status.INTERNAL_SERVER_ERROR);
-            muleMessage.setPayload(e.getMessage());
+            muleMessage.setPayload("An error occured: " + e.getMessage());
             return muleMessage.getPayload();
         }
     }

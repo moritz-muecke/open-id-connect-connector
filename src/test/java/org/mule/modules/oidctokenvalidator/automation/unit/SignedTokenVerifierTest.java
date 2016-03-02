@@ -3,33 +3,9 @@ package org.mule.modules.oidctokenvalidator.automation.unit;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.File;
-import java.io.FileReader;
-import java.security.KeyPair;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import java.util.Properties;
-
-import net.minidev.json.JSONObject;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.mule.modules.oidctokenvalidator.automation.unit.util.RSAKeyGenerator;
-import org.mule.modules.oidctokenvalidator.client.oidc.TokenVerifier;
-import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
-
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
-import com.nimbusds.jose.JWSVerifier;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.crypto.RSASSAVerifier;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
-
 
 public class SignedTokenVerifierTest {
-
+	/*
 	private KeyPair keyPair;
 	private JWSVerifier verifier;
 	private JWSSigner signer;
@@ -76,4 +52,5 @@ public class SignedTokenVerifierTest {
 		jwt.sign(signer);
 		assertTrue(TokenVerifier.verifyAccessToken(verifier, jwt, props.getProperty("sso-url")) instanceof JWTClaimsSet);
 	}
+	*/
 }

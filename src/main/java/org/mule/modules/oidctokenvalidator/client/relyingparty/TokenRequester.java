@@ -1,4 +1,4 @@
-package org.mule.modules.oidctokenvalidator.client.oidc;
+package org.mule.modules.oidctokenvalidator.client.relyingparty;
 
 import com.nimbusds.oauth2.sdk.*;
 import com.nimbusds.oauth2.sdk.auth.ClientAuthentication;
@@ -11,8 +11,10 @@ import com.nimbusds.openid.connect.sdk.Nonce;
 import com.nimbusds.openid.connect.sdk.OIDCTokenResponse;
 import com.nimbusds.openid.connect.sdk.OIDCTokenResponseParser;
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens;
+import org.mule.modules.oidctokenvalidator.client.tokenvalidation.TokenVerifier;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.RequestTokenFromSsoException;
+import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -39,11 +41,10 @@ public class TokenRequester {
         return authenticationRequest;
     }
 
-    public OIDCTokens requestTokensFromSso(String authCode) throws RequestTokenFromSsoException {
-        AuthorizationCodeGrant authCodeGrant = new AuthorizationCodeGrant(new AuthorizationCode(authCode), ssoConfig.getRedirectUri());
-        TokenRequest tokenReq = new TokenRequest(ssoConfig.getProviderMetadata().getTokenEndpointURI(), ssoConfig.getClientSecretBasic(), authCodeGrant);
-
+    public OIDCTokens requestTokensFromSso(String authCode, Nonce nonce) throws RequestTokenFromSsoException {
         try {
+            AuthorizationCodeGrant authCodeGrant = new AuthorizationCodeGrant(new AuthorizationCode(authCode), ssoConfig.getRedirectUri());
+            TokenRequest tokenReq = new TokenRequest(ssoConfig.getProviderMetadata().getTokenEndpointURI(), ssoConfig.getClientSecretBasic(), authCodeGrant);
             HTTPResponse tokenHTTPResp = tokenReq.toHTTPRequest().send();
             TokenResponse tokenResponse = OIDCTokenResponseParser.parse(tokenHTTPResp);
             if (tokenResponse instanceof TokenErrorResponse) {
@@ -51,8 +52,11 @@ public class TokenRequester {
                 throw new RequestTokenFromSsoException(error.getDescription());
             }
             OIDCTokenResponse oidcTokenResponse = (OIDCTokenResponse) tokenResponse;
+
+            TokenVerifier.verifyIdToken(oidcTokenResponse.getOIDCTokens().getIDToken(), ssoConfig, nonce);
+
             return oidcTokenResponse.getOIDCTokens();
-        } catch (IOException | ParseException e) {
+        } catch (Exception e) {
             throw new RequestTokenFromSsoException(e.getMessage());
         }
     }
@@ -72,6 +76,7 @@ public class TokenRequester {
             throw new RequestTokenFromSsoException("Refresh tokens from SSO failed");
         }
         OIDCTokenResponse oidcTokenResponse = (OIDCTokenResponse) response;
+
         return oidcTokenResponse.getOIDCTokens();
     }
 
