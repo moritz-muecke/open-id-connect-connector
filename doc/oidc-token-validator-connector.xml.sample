@@ -7,5 +7,5 @@
 <!-- END_INCLUDE(oidc-token-validator:online-token-validation) -->
 
 <!-- BEGIN_INCLUDE(oidc-token-validator:act-as-relying-party) -->
-	<oidc-token-validator:act-as-relying-party/>
+	<oidc-token-validator:act-as-relying-party redirectUri="" clientId="" clientSecret="" instantRefresh=""/>
 <!-- END_INCLUDE(oidc-token-validator:act-as-relying-party) -->

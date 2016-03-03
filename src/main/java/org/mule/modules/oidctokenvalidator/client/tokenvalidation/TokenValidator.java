@@ -20,18 +20,12 @@ import com.nimbusds.oauth2.sdk.token.AccessToken;
 
 public class TokenValidator {
 
-	private SingleSignOnConfig ssoConfig;
-
-	public TokenValidator(SingleSignOnConfig provider) {
-		ssoConfig = provider;
-	}
-
-	public JSONObject introspectionTokenValidation(String authHeader)
+	public JSONObject introspectionTokenValidation(String authHeader, SingleSignOnConfig ssoConfig)
 			throws TokenValidationException, HTTPConnectException {
 		try {
 			AccessToken accessToken = AccessToken.parse(authHeader);
 
-			TokenIntrospectionRequest introspectionRequest = createTokenIntrospectionRequest(accessToken);
+			TokenIntrospectionRequest introspectionRequest = createTokenIntrospectionRequest(accessToken, ssoConfig);
 			HTTPResponse introSpectionHttpResponse = introspectionRequest
 					.toHTTPRequest().send();
 
@@ -62,7 +56,7 @@ public class TokenValidator {
 		}
 	}
 
-	public JWTClaimsSet localTokenValidation(String authHeader)
+	public JWTClaimsSet localTokenValidation(String authHeader, SingleSignOnConfig ssoConfig)
 			throws TokenValidationException {
 		try {
 			AccessToken accessToken = AccessToken.parse(authHeader);
@@ -72,7 +66,7 @@ public class TokenValidator {
 		}
 	}
 	
-	public TokenIntrospectionRequest createTokenIntrospectionRequest(AccessToken accessToken) {
+	public TokenIntrospectionRequest createTokenIntrospectionRequest(AccessToken accessToken, SingleSignOnConfig ssoConfig) {
 		return new TokenIntrospectionRequest(
 				ssoConfig.getIntrospectionUri(),
 				ssoConfig.getClientSecretBasic(),

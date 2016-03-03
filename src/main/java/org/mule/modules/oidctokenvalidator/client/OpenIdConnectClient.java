@@ -22,35 +22,25 @@ public class OpenIdConnectClient {
 
     private TokenValidator tokenValidator;
     private SingleSignOnConfig ssoConfig;
-    private ConnectorConfig config;
 
-    public OpenIdConnectClient(
-            ConnectorConfig connConfig,
-            SingleSignOnConfig ssoCfg,
-            TokenValidator validator) throws MetaDataInitializationException {
-        ssoConfig = ssoCfg;
-        config = connConfig;
+    public OpenIdConnectClient(SingleSignOnConfig ssoConfig, TokenValidator tokenValidator)
+            throws MetaDataInitializationException {
+        this.ssoConfig = ssoConfig;
         try {
             ssoConfig.buildProviderMetadata();
         } catch (Exception e) {
             throw new MetaDataInitializationException("Error during MetaData initialization from identity provider: " + e.getMessage());
         }
-        tokenValidator = validator;
+        this.tokenValidator = tokenValidator;
     }
 
     public Map<String, Object> ssoTokenValidation(String authHeader)
             throws TokenValidationException, HTTPConnectException {
-        try {
-            ssoConfig.setIntrospectionUri(new URI(ssoConfig.getSsoUri() + config.getIntrospectionEndpoint()));
-        } catch (URISyntaxException e) {
-            throw new TokenValidationException("Invalid introspection URL path");
-        }
-        ssoConfig.setClientSecretBasic(new ClientSecretBasic(new ClientID(config.getClientId()), new Secret(config.getClientSecret())));
-        return tokenValidator.introspectionTokenValidation(authHeader);
+        return tokenValidator.introspectionTokenValidation(authHeader, ssoConfig);
     }
 
     public Map<String, Object> localTokenValidation(String authHeader) throws TokenValidationException {
-        JWTClaimsSet jwtClaimSet = tokenValidator.localTokenValidation(authHeader);
+        JWTClaimsSet jwtClaimSet = tokenValidator.localTokenValidation(authHeader, ssoConfig);
         return jwtClaimSet.toJSONObject();
     }
 
@@ -64,9 +54,4 @@ public class OpenIdConnectClient {
             relyingPartyHandler.handleRedirect();
         }
     }
-
-    public SingleSignOnConfig getSsoConfig() {
-        return ssoConfig;
-    }
-
 }

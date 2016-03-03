@@ -1,11 +1,4 @@
 package org.mule.modules.oidctokenvalidator;
-import java.net.URI;
-import java.util.Map;
-import java.util.Set;
-
-import javax.inject.Inject;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Response;
 
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
 import com.nimbusds.oauth2.sdk.auth.Secret;
@@ -25,13 +18,26 @@ import org.mule.api.store.ListableObjectStore;
 import org.mule.api.store.ObjectStoreException;
 import org.mule.module.http.api.HttpConstants;
 import org.mule.modules.oidctokenvalidator.client.OpenIdConnectClient;
-import org.mule.modules.oidctokenvalidator.client.relyingparty.*;
-import org.mule.modules.oidctokenvalidator.client.tokenvalidation.*;
+import org.mule.modules.oidctokenvalidator.client.relyingparty.RelyingPartyHandler;
+import org.mule.modules.oidctokenvalidator.client.relyingparty.TokenRequester;
+import org.mule.modules.oidctokenvalidator.client.relyingparty.storage.RedirectData;
+import org.mule.modules.oidctokenvalidator.client.relyingparty.storage.Storage;
+import org.mule.modules.oidctokenvalidator.client.relyingparty.storage.TokenData;
+import org.mule.modules.oidctokenvalidator.client.tokenvalidation.TokenValidator;
 import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
+
+import javax.inject.Inject;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriBuilder;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Map;
+import java.util.Set;
 
 
 @Connector(name="oidc-token-validator", friendlyName="OIDCTokenValidator")
@@ -50,22 +56,23 @@ public class OIDCTokenValidatorConnector {
     @Start
     public void init() throws MetaDataInitializationException, ObjectStoreException {
         ssoConfig = new SingleSignOnConfig(config);
-        TokenValidator validator = new TokenValidator(ssoConfig);
-    	client = new OpenIdConnectClient(config, ssoConfig, validator);
+        TokenValidator validator = new TokenValidator();
+    	client = new OpenIdConnectClient(ssoConfig, validator);
     }
     
         
     /**
-     * Uses OIDC token introspection to validate a bearer token
+     * Uses token introspection specified by OAUTH 2.0 to validate the token. It calls an api endpoint at the sso with
+     * the given bearer token from the request header. Intercepts the flow if token isn't valid, otherwise it continues
+     * processing. If claim extraction is activated, set of id-token claims is added to the flow variables.
      * 
      * {@sample.xml ../../../doc/oidc-token-validator-connector.xml.sample
 	 * oidc-token-validator:online-token-validation}
      * 
      * @param callback injected by devkit
      * @param muleEvent injected by devkit
-     * @param headers Authorization header where the bearer token is located
      * @param introspectionEndpoint The path of the introspection endpoint
-     * @param clientID Any Client-ID from the SSO to prevent token scanning attacks
+     * @param clientId Any Client-ID from the SSO to prevent token scanning attacks
      * @param clientSecret The Secret of the given Client-ID
      * @param claimExtraction Creates the FlowVar tokenClaims which contains a map with all claims of the given token
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
@@ -73,27 +80,27 @@ public class OIDCTokenValidatorConnector {
      */
     @Processor(intercepting = true)
     public Object onlineTokenValidation(
-    		SourceCallback callback, 
+    		SourceCallback callback,
     		MuleEvent muleEvent,
-    		@InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, 
-    		String introspectionEndpoint, 
-    		@FriendlyName("Client ID")String clientID, 
-    		String clientSecret,
+    		String introspectionEndpoint,
+    		@FriendlyName("Client ID")String clientId,
+            @Password String clientSecret,
     		boolean claimExtraction) throws HTTPConnectException {
-
-		MuleMessage muleMessage = muleEvent.getMessage();
-		config.setClientId(clientID);
-    	config.setClientSecret(clientSecret);
-    	config.setIntrospectionEndpoint(introspectionEndpoint);
-    	try {
-    		Map<String, Object> claims = client.ssoTokenValidation(headers.get(HttpHeaders.AUTHORIZATION));
+        MuleMessage muleMessage = muleEvent.getMessage();
+        ssoConfig.setIntrospectionUri(UriBuilder.fromUri(ssoConfig.getSsoUri()).path(introspectionEndpoint).build());
+        ssoConfig.setClientSecretBasic(new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret)));
+        try {
+            String authHeader = muleMessage.getInboundProperty(HttpHeaders.AUTHORIZATION);
+    		Map<String, Object> claims = client.ssoTokenValidation(authHeader);
 			if (claimExtraction) {
 				muleMessage.setInvocationProperty("tokenClaims", claims);
 			}
+            muleMessage.setOutboundProperty(HttpHeaders.AUTHORIZATION, authHeader);
             return callback.processEvent(muleEvent).getMessage().getPayload();
 		} catch (TokenValidationException e) {
             changeResponseStatus(muleMessage, Response.Status.UNAUTHORIZED);
-			muleMessage.setPayload(e.getMessage());
+            muleMessage.setOutboundProperty(HttpHeaders.WWW_AUTHENTICATE, String.format("Error=\"%s\"", e.getMessage()));
+            muleMessage.setPayload(e.getMessage());
 			return muleMessage.getPayload();
 		} catch (HTTPConnectException e) {
 			changeResponseStatus(muleMessage, Response.Status.SERVICE_UNAVAILABLE);
@@ -108,53 +115,57 @@ public class OIDCTokenValidatorConnector {
     
     
     /**
-     * Local validation of a bearer token
+     * Uses a internal class to validate the token. Intercepts the flow if token isn't valid, otherwise it continues
+     * processing. If claim extraction is activated, set of id-token claims is added to the flow variables.
      * 
      * {@sample.xml ../../../doc/oidc-token-validator-connector.xml.sample
 	 * oidc-token-validator:local-token-validation}
      * 
      * @param callback injected by devkit
      * @param muleEvent injected by devkit
-     * @param headers Authorization header where the bearer token is located
      * @param claimExtraction Creates the FlowVar tokenClaims which contains a map with all claims of the given token
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
      */
     @Processor(intercepting = true)
-    public Object localTokenValidation(
-    		SourceCallback callback, 
-    		MuleEvent muleEvent,
-    		@InboundHeaders(HttpHeaders.AUTHORIZATION) Map<String, String> headers, 
-    		boolean claimExtraction) {
-
+    public Object localTokenValidation(SourceCallback callback, MuleEvent muleEvent, boolean claimExtraction) {
 		MuleMessage muleMessage = muleEvent.getMessage();
-
-    	try {
-			Map<String, Object> claims = client.localTokenValidation(headers.get(HttpHeaders.AUTHORIZATION));
-			if (claimExtraction) {
+        try {
+            String authHeader = muleMessage.getInboundProperty(HttpHeaders.AUTHORIZATION);
+            Map<String, Object> claims = client.localTokenValidation(authHeader);
+            if (claimExtraction) {
                 muleMessage.setInvocationProperty("tokenClaims", claims);
             }
-			return callback.processEvent(muleEvent).getMessage().getPayload();
-		} catch (TokenValidationException e) {
-			changeResponseStatus(muleMessage, Response.Status.UNAUTHORIZED);
-			muleMessage.setPayload(e.getMessage());	
-			return muleMessage.getPayload();
-		} catch (Exception e) {
+            muleMessage.setOutboundProperty(HttpHeaders.AUTHORIZATION, authHeader);
+            return callback.processEvent(muleEvent).getMessage().getPayload();
+        } catch (TokenValidationException e) {
+            changeResponseStatus(muleMessage, Response.Status.UNAUTHORIZED);
+            muleMessage.setOutboundProperty(HttpHeaders.WWW_AUTHENTICATE, String.format("Error=\"%s\"", e.getMessage()));
+            muleMessage.setPayload(e.getMessage());
+            return muleMessage.getPayload();
+        } catch (Exception e) {
             changeResponseStatus(muleMessage, Response.Status.BAD_REQUEST);
-			muleMessage.setPayload(e.getMessage());	
-			return muleMessage.getPayload();
-		}
+            muleMessage.setPayload(e.getMessage());
+            return muleMessage.getPayload();
+        }
     }
 
     /**
-     * Connector works as a OIDC relying party
+     * With this processor the connector works as a relying party specified by the OpenID Connect standard. Token
+     * management is realized via the mule object store. Redirects user to the identity provider if there isn't an
+     * active session. Otherwise it enhances the request with the Authorization header and continues processing of the
+     * current flow.
      *
      * {@sample.xml ../../../doc/oidc-token-validator-connector.xml.sample
 	 * oidc-token-validator:act-as-relying-party}
      *
      * @param callback injected by devkit
      * @param muleEvent injected by devkit
-     * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
-     * @throws Exception
+     * @param redirectUri URI which is registered at the Identity Provider
+     * @param clientId SSO client ID for this application
+     * @param clientSecret SSO client secret for this application
+     * @param instantRefresh Specifies if the tokens are refreshed at every request or only if they expire
+     * @return Intercepts the flow if redirecting or process with original content
+     * @throws URISyntaxException If redirect URI isn't valid
      */
     @Processor(intercepting = true)
     public Object actAsRelyingParty(
@@ -166,15 +177,14 @@ public class OIDCTokenValidatorConnector {
             boolean instantRefresh) throws Exception {
         MuleMessage muleMessage = muleEvent.getMessage();
         ClientSecretBasic clientSecretBasic = new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret));
-        client.getSsoConfig().setRedirectUri(new URI(redirectUri));
-        client.getSsoConfig().setClientSecretBasic(clientSecretBasic);
-
-        ListableObjectStore<String> tokenStore = muleContext.getObjectStoreManager().getObjectStore("token-cookie-store");
-        Storage<String> tokenStorage = new TokenStorage(tokenStore);
+        ssoConfig.setRedirectUri(new URI(redirectUri));
+        ssoConfig.setClientSecretBasic(clientSecretBasic);
+        ListableObjectStore<TokenData> tokenStore = muleContext.getObjectStoreManager().getObjectStore("token-cookie-store");
+        Storage<TokenData> tokenStorage = new Storage<>(tokenStore);
         ListableObjectStore<RedirectData> redirectStore = muleContext.getObjectStoreManager().getObjectStore("redirect-cookie-store");
-        Storage<RedirectData> redirectStorage = new RedirectDataStorage(redirectStore);
-        TokenRequester requester = new TokenRequester(ssoConfig);
-        RelyingPartyHandler handler = new RelyingPartyHandler(muleMessage, requester, tokenStorage, redirectStorage, instantRefresh);
+        Storage<RedirectData> redirectStorage = new Storage<>(redirectStore);
+        TokenRequester requester = new TokenRequester();
+        RelyingPartyHandler handler = new RelyingPartyHandler(muleMessage, requester, tokenStorage, redirectStorage, ssoConfig, instantRefresh);
 
         try {
             client.actAsRelyingParty(handler);
@@ -184,16 +194,20 @@ public class OIDCTokenValidatorConnector {
                     (int)muleMessage.getOutboundProperty(HTTP_STATUS) == Response.Status.FOUND.getStatusCode()) {
                 return muleMessage.getPayload();
             } else {
-                return callback.process(muleMessage);
+                return callback.processEvent(muleEvent).getMessage().getPayload();
             }
         } catch (Exception e) {
-            System.out.println("An error occured: " + e.getCause() + e.getMessage());
             changeResponseStatus(muleMessage, Response.Status.INTERNAL_SERVER_ERROR);
             muleMessage.setPayload("An error occured: " + e.getMessage());
             return muleMessage.getPayload();
         }
     }
 
+    /**
+     * Helper method to change the status code and reason phrase of the current request/mule message
+     * @param message MuleMessage where HTTP status properties are changed
+     * @param statusType HTTP status type which should be configured
+     */
 	private void changeResponseStatus(MuleMessage message, Response.StatusType statusType) {
 		message.setOutboundProperty(HttpConstants.ResponseProperties.HTTP_STATUS_PROPERTY, statusType.getStatusCode());
 		message.setOutboundProperty(HttpConstants.ResponseProperties.HTTP_REASON_PROPERTY, statusType.getReasonPhrase());

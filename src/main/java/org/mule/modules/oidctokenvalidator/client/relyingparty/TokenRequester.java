@@ -11,37 +11,28 @@ import com.nimbusds.openid.connect.sdk.Nonce;
 import com.nimbusds.openid.connect.sdk.OIDCTokenResponse;
 import com.nimbusds.openid.connect.sdk.OIDCTokenResponseParser;
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens;
-import org.mule.modules.oidctokenvalidator.client.tokenvalidation.TokenVerifier;
+import org.mule.modules.oidctokenvalidator.client.relyingparty.storage.TokenData;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.RequestTokenFromSsoException;
-import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
 import java.io.IOException;
 import java.net.URI;
 
 public class TokenRequester {
 
-    private SingleSignOnConfig ssoConfig;
-
-    public TokenRequester(SingleSignOnConfig config) {
-        ssoConfig = config;
-    }
-
-    public AuthenticationRequest buildRedirectRequest() {
+    public AuthenticationRequest buildRedirectRequest(SingleSignOnConfig ssoConfig) {
         State state = new State();
         Nonce nonce = new Nonce();
         Scope scope = Scope.parse("openid");
         ClientID clientId = ssoConfig.getClientSecretBasic().getClientID();
 
-        AuthenticationRequest authenticationRequest = new AuthenticationRequest(
+        return new AuthenticationRequest(
                 ssoConfig.getProviderMetadata().getAuthorizationEndpointURI(),
                 new ResponseType(ResponseType.Value.CODE),
                 scope, clientId, ssoConfig.getRedirectUri(), state, nonce);
-        
-        return authenticationRequest;
     }
 
-    public OIDCTokens requestTokensFromSso(String authCode, Nonce nonce) throws RequestTokenFromSsoException {
+    public TokenData requestTokensFromSso(String authCode, SingleSignOnConfig ssoConfig) throws RequestTokenFromSsoException {
         try {
             AuthorizationCodeGrant authCodeGrant = new AuthorizationCodeGrant(new AuthorizationCode(authCode), ssoConfig.getRedirectUri());
             TokenRequest tokenReq = new TokenRequest(ssoConfig.getProviderMetadata().getTokenEndpointURI(), ssoConfig.getClientSecretBasic(), authCodeGrant);
@@ -52,17 +43,15 @@ public class TokenRequester {
                 throw new RequestTokenFromSsoException(error.getDescription());
             }
             OIDCTokenResponse oidcTokenResponse = (OIDCTokenResponse) tokenResponse;
-
-            TokenVerifier.verifyIdToken(oidcTokenResponse.getOIDCTokens().getIDToken(), ssoConfig, nonce);
-
-            return oidcTokenResponse.getOIDCTokens();
+            OIDCTokens tokens = oidcTokenResponse.getOIDCTokens();
+            return new TokenData(tokens);
         } catch (Exception e) {
             throw new RequestTokenFromSsoException(e.getMessage());
         }
     }
 
-    public OIDCTokens refreshTokenSet(OIDCTokens tokens) throws RequestTokenFromSsoException, IOException, ParseException {
-        RefreshToken refreshToken = tokens.getRefreshToken();
+    public TokenData refreshTokenSet(TokenData tokenData, SingleSignOnConfig ssoConfig) throws RequestTokenFromSsoException, IOException, ParseException {
+        RefreshToken refreshToken = tokenData.getRefreshToken();
         AuthorizationGrant refreshTokenGrant = new RefreshTokenGrant(refreshToken);
 
         ClientAuthentication clientAuth = ssoConfig.getClientSecretBasic();
@@ -77,10 +66,7 @@ public class TokenRequester {
         }
         OIDCTokenResponse oidcTokenResponse = (OIDCTokenResponse) response;
 
-        return oidcTokenResponse.getOIDCTokens();
-    }
-
-    public SingleSignOnConfig getSsoConfig() {
-        return ssoConfig;
+        OIDCTokens refreshedTokens = oidcTokenResponse.getOIDCTokens();
+        return new TokenData(refreshedTokens, tokenData.getCookieId());
     }
 }
