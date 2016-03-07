@@ -2,8 +2,10 @@ package org.mule.modules.oidctokenvalidator.client.tokenvalidation;
 
 import java.io.IOException;
 
+import com.nimbusds.oauth2.sdk.token.Token;
 import net.minidev.json.JSONObject;
 
+import org.mule.modules.oidctokenvalidator.client.relyingparty.TokenRequester;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
@@ -19,6 +21,12 @@ import com.nimbusds.oauth2.sdk.http.HTTPResponse;
 import com.nimbusds.oauth2.sdk.token.AccessToken;
 
 public class TokenValidator {
+
+	private TokenVerifier verifier;
+
+	public TokenValidator(TokenVerifier verifier) {
+		this.verifier = verifier;
+	}
 
 	public JSONObject introspectionTokenValidation(String authHeader, SingleSignOnConfig ssoConfig)
 			throws TokenValidationException, HTTPConnectException {
@@ -60,7 +68,7 @@ public class TokenValidator {
 			throws TokenValidationException {
 		try {
 			AccessToken accessToken = AccessToken.parse(authHeader);
-			return TokenVerifier.verifyAccessToken(accessToken, ssoConfig.getRsaPublicKey() ,ssoConfig.getSsoUri().toString());
+			return verifier.verifyAccessToken(accessToken, ssoConfig.getRsaPublicKey() ,ssoConfig.getSsoUri().toString());
 		} catch (Exception e) {
 			throw new TokenValidationException(e.getMessage());
 		}

@@ -20,6 +20,12 @@ import java.net.URI;
 
 public class TokenRequester {
 
+    private TokenRequestFactory tokenRequestFactory;
+
+    public TokenRequester(){
+        this.tokenRequestFactory = new TokenRequestFactory();
+    }
+
     public AuthenticationRequest buildRedirectRequest(SingleSignOnConfig ssoConfig) {
         State state = new State();
         Nonce nonce = new Nonce();
@@ -35,7 +41,7 @@ public class TokenRequester {
     public TokenData requestTokensFromSso(String authCode, SingleSignOnConfig ssoConfig) throws RequestTokenFromSsoException {
         try {
             AuthorizationCodeGrant authCodeGrant = new AuthorizationCodeGrant(new AuthorizationCode(authCode), ssoConfig.getRedirectUri());
-            TokenRequest tokenReq = new TokenRequest(ssoConfig.getProviderMetadata().getTokenEndpointURI(), ssoConfig.getClientSecretBasic(), authCodeGrant);
+            TokenRequest tokenReq = tokenRequestFactory.getTokenRequest(ssoConfig.getProviderMetadata().getTokenEndpointURI(), ssoConfig.getClientSecretBasic(), authCodeGrant);
             HTTPResponse tokenHTTPResp = tokenReq.toHTTPRequest().send();
             TokenResponse tokenResponse = OIDCTokenResponseParser.parse(tokenHTTPResp);
             if (tokenResponse instanceof TokenErrorResponse) {
@@ -58,7 +64,7 @@ public class TokenRequester {
 
         URI tokenEndpoint = ssoConfig.getProviderMetadata().getTokenEndpointURI();
 
-        TokenRequest request = new TokenRequest(tokenEndpoint, clientAuth, refreshTokenGrant);
+        TokenRequest request = tokenRequestFactory.getTokenRequest(tokenEndpoint, clientAuth, refreshTokenGrant);
         TokenResponse response = OIDCTokenResponseParser.parse(request.toHTTPRequest().send());
 
         if(response instanceof TokenErrorResponse) {
@@ -68,5 +74,9 @@ public class TokenRequester {
 
         OIDCTokens refreshedTokens = oidcTokenResponse.getOIDCTokens();
         return new TokenData(refreshedTokens, tokenData.getCookieId());
+    }
+
+    public void setTokenRequestFactory(TokenRequestFactory tokenRequestFactory) {
+        this.tokenRequestFactory = tokenRequestFactory;
     }
 }

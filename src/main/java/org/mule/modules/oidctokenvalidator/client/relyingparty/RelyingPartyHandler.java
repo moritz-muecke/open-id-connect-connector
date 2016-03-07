@@ -32,6 +32,7 @@ public class RelyingPartyHandler {
     private Storage<RedirectData> redirectDataStorage;
     private MuleMessage muleMessage;
     private SingleSignOnConfig ssoConfig;
+    private TokenVerifier verifier;
     private boolean instantRefresh;
 
     public RelyingPartyHandler(
@@ -40,12 +41,14 @@ public class RelyingPartyHandler {
             Storage<TokenData> tokenStorage,
             Storage<RedirectData> redirectDataStorage,
             SingleSignOnConfig ssoConfig,
+            TokenVerifier verifier,
             boolean instantRefresh) {
         this.tokenRequester = tokenRequester;
         this.tokenStorage = tokenStorage;
         this.redirectDataStorage = redirectDataStorage;
         this.muleMessage = muleMessage;
         this.ssoConfig = ssoConfig;
+        this.verifier = verifier;
         this.instantRefresh = instantRefresh;
     }
 
@@ -66,10 +69,10 @@ public class RelyingPartyHandler {
         TokenData tokenData = tokenStorage.getData(tokenStorageEntryId);
         if (instantRefresh) {
             tokenData = refreshTokens(tokenData, tokenStorageEntryId, redirectStorageEntryId);
-        } else if(!TokenVerifier.isActive(tokenData.getAccessToken())) {
+        } else if(!verifier.isActive(tokenData.getAccessToken())) {
             tokenData = refreshTokens(tokenData, tokenStorageEntryId, redirectStorageEntryId);
         }
-        muleMessage.setOutboundProperty(HttpHeaders.Names.AUTHORIZATION, "Bearer " + tokenData.getAccessToken().getValue());
+        if(tokenData != null) muleMessage.setOutboundProperty(HttpHeaders.Names.AUTHORIZATION, "Bearer " + tokenData.getAccessToken().getValue());
     }
 
     public void handleTokenRequest() throws ObjectStoreException {
@@ -81,16 +84,17 @@ public class RelyingPartyHandler {
         String authCode = queryParams.get("code");
         if (!redirectData.getState().getValue().equals(queryState) || authCode == null) {
             handleRedirect();
-        }
-        try {
-            TokenData tokenData = tokenRequester.requestTokensFromSso(authCode, ssoConfig);
-            TokenVerifier.verifyIdToken(tokenData.getIdToken(), ssoConfig, redirectData.getNonce());
-            storeAndSetTokenCookie(tokenData);
-            redirectDataStorage.removeData(redirectEntryId);
-            muleMessage.setOutboundProperty(HttpHeaders.Names.AUTHORIZATION, "Bearer " + tokenData.getAccessToken().getValue());
-        } catch (RequestTokenFromSsoException | TokenValidationException e) {
-            redirectDataStorage.removeData(redirectEntryId);
-            handleRedirect();
+        } else {
+            try {
+                TokenData tokenData = tokenRequester.requestTokensFromSso(authCode, ssoConfig);
+                verifier.verifyIdToken(tokenData.getIdToken(), ssoConfig, redirectData.getNonce());
+                storeAndSetTokenCookie(tokenData);
+                redirectDataStorage.removeData(redirectEntryId);
+                muleMessage.setOutboundProperty(HttpHeaders.Names.AUTHORIZATION, "Bearer " + tokenData.getAccessToken().getValue());
+            } catch (RequestTokenFromSsoException | TokenValidationException e) {
+                redirectDataStorage.removeData(redirectEntryId);
+                handleRedirect();
+            }
         }
     }
 
@@ -101,11 +105,11 @@ public class RelyingPartyHandler {
         setRedirectToSso(authRequest.toURI());
     }
 
-    private TokenData refreshTokens(TokenData tokenData, String tokenStorageEntryId, String redirectStorageEntryId) throws ObjectStoreException, ParseException {
+    public TokenData refreshTokens(TokenData tokenData, String tokenStorageEntryId, String redirectStorageEntryId) throws ObjectStoreException, ParseException {
         TokenData refreshedTokenData = null;
         try {
             refreshedTokenData = tokenRequester.refreshTokenSet(tokenData, ssoConfig);
-            TokenVerifier.verifyRefreshedIdToken(tokenData.getIdToken(), refreshedTokenData.getIdToken());
+            verifier.verifyRefreshedIdToken(tokenData.getIdToken(), refreshedTokenData.getIdToken());
             storeAndSetTokenCookie(refreshedTokenData);
         } catch (RequestTokenFromSsoException | IOException | TokenValidationException e) {
             tokenStorage.removeData(tokenStorageEntryId);
@@ -140,5 +144,9 @@ public class RelyingPartyHandler {
                     .map(c -> c.split("=")[1])
                     .findFirst().orElse(null);
         } else return null;
+    }
+
+    public void setInstantRefresh(boolean instantRefresh) {
+        this.instantRefresh = instantRefresh;
     }
 }

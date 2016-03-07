@@ -18,8 +18,8 @@ import org.opensaml.ws.wsaddressing.To;
 import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
 
-public abstract class TokenVerifier {
-	public static JWTClaimsSet verifyAccessToken(AccessToken accessToken, RSAPublicKey publicKey, String origin) throws TokenValidationException {
+public class TokenVerifier {
+	public JWTClaimsSet verifyAccessToken(AccessToken accessToken, RSAPublicKey publicKey, String origin) throws TokenValidationException {
 		try {
 			SignedJWT signedJWT = SignedJWT.parse(accessToken.getValue());
 			JWSVerifier verifier = new RSASSAVerifier(publicKey);
@@ -37,7 +37,7 @@ public abstract class TokenVerifier {
 		}
 	}
 
-	public static void verifyIdToken(JWT idToken, SingleSignOnConfig ssoConfig, Nonce nonce) throws TokenValidationException {
+	public void verifyIdToken(JWT idToken, SingleSignOnConfig ssoConfig, Nonce nonce) throws TokenValidationException {
 		try {
 			OIDCProviderMetadata metaData = ssoConfig.getProviderMetadata();
 			JWTClaimsSet claimSet = idToken.getJWTClaimsSet();
@@ -58,7 +58,7 @@ public abstract class TokenVerifier {
 
 	}
 
-	public static void verifyRefreshedIdToken(JWT currentIdToken, JWT newIdToken) throws TokenValidationException {
+	public void verifyRefreshedIdToken(JWT currentIdToken, JWT newIdToken) throws TokenValidationException {
         try {
             JWTClaimsSet currentClaims = currentIdToken.getJWTClaimsSet();
             JWTClaimsSet newClaims = newIdToken.getJWTClaimsSet();
@@ -79,7 +79,7 @@ public abstract class TokenVerifier {
         }
     }
 
-	public static boolean isActive(AccessToken accessToken) throws ParseException {
+	public boolean isActive(AccessToken accessToken) throws ParseException {
 		JWTClaimsSet claimsSet = SignedJWT.parse(accessToken.getValue()).getJWTClaimsSet();
 		long expTime = claimsSet.getExpirationTime().getTime();
 		long notBeforeTime = claimsSet.getNotBeforeTime().getTime();

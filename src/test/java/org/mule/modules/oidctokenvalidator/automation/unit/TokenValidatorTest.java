@@ -60,8 +60,8 @@ public class TokenValidatorTest extends Mockito{
 		when(metaDataProvider.getSsoUri()).thenReturn(new URI(props.getProperty("sso-url")));
 
 		Mockito.when(TokenVerifier.verifyAccessToken(
-				Mockito.any(JWSVerifier.class), 
-				Mockito.any(SignedJWT.class), 
+				Mockito.any(JWSVerifier.class),
+				Mockito.any(SignedJWT.class),
 				Mockito.any(String.class))).thenReturn(givenClaims);
 		
 		TokenValidator tokenValidator = new TokenValidator(metaDataProvider);

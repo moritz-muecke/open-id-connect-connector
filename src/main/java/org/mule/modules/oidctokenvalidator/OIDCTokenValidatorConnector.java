@@ -24,6 +24,7 @@ import org.mule.modules.oidctokenvalidator.client.relyingparty.storage.RedirectD
 import org.mule.modules.oidctokenvalidator.client.relyingparty.storage.Storage;
 import org.mule.modules.oidctokenvalidator.client.relyingparty.storage.TokenData;
 import org.mule.modules.oidctokenvalidator.client.tokenvalidation.TokenValidator;
+import org.mule.modules.oidctokenvalidator.client.tokenvalidation.TokenVerifier;
 import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
@@ -56,7 +57,8 @@ public class OIDCTokenValidatorConnector {
     @Start
     public void init() throws MetaDataInitializationException, ObjectStoreException {
         ssoConfig = new SingleSignOnConfig(config);
-        TokenValidator validator = new TokenValidator();
+        TokenVerifier verifier = new TokenVerifier();
+        TokenValidator validator = new TokenValidator(verifier);
     	client = new OpenIdConnectClient(ssoConfig, validator);
     }
     
@@ -184,7 +186,8 @@ public class OIDCTokenValidatorConnector {
         ListableObjectStore<RedirectData> redirectStore = muleContext.getObjectStoreManager().getObjectStore("redirect-cookie-store");
         Storage<RedirectData> redirectStorage = new Storage<>(redirectStore);
         TokenRequester requester = new TokenRequester();
-        RelyingPartyHandler handler = new RelyingPartyHandler(muleMessage, requester, tokenStorage, redirectStorage, ssoConfig, instantRefresh);
+        TokenVerifier verifier = new TokenVerifier();
+        RelyingPartyHandler handler = new RelyingPartyHandler(muleMessage, requester, tokenStorage, redirectStorage, ssoConfig, verifier, instantRefresh);
 
         try {
             client.actAsRelyingParty(handler);
