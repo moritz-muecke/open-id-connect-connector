@@ -3,9 +3,6 @@ package org.mule.modules.oidctokenvalidator.client.relyingparty;
 import com.nimbusds.oauth2.sdk.AuthorizationGrant;
 import com.nimbusds.oauth2.sdk.TokenRequest;
 import com.nimbusds.oauth2.sdk.auth.ClientAuthentication;
-import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
-import com.nimbusds.openid.connect.sdk.OIDCTokenResponseParser;
-
 import java.net.URI;
 
 /**

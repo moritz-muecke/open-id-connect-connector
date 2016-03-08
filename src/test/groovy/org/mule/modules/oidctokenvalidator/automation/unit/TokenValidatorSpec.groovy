@@ -40,7 +40,7 @@ class TokenValidatorSpec extends Specification {
         json.put("exp", System.currentTimeMillis() + 10000);
         json.put("nbf", 0);
         def claims = JWTClaimsSet.parse(json);
-        ssoConfig.rsaPublicKey >> (RSAPublicKey)RSAKeyGenerator.keyPairGenerator().getPublic()
+        ssoConfig.rsaPublicKey >> (RSAPublicKey)RSAKeyGenerator.keyPairGenerator().public
         ssoConfig.ssoUri >> new URI("http://localhost:8080")
         tokenVerifier.verifyAccessToken(_, _, _) >> claims
 
@@ -52,7 +52,7 @@ class TokenValidatorSpec extends Specification {
     def "local token validation throws TokenValidationException"() {
         given:
         def authHeader = props.getProperty("bearer-auth-header")
-        ssoConfig.rsaPublicKey >> (RSAPublicKey)RSAKeyGenerator.keyPairGenerator().getPublic()
+        ssoConfig.rsaPublicKey >> (RSAPublicKey)RSAKeyGenerator.keyPairGenerator().public
         ssoConfig.ssoUri >> new URI("http://localhost:8080")
         tokenVerifier.verifyAccessToken(_, _, _) >> {
             throw new TokenValidationException("Token validation failed")

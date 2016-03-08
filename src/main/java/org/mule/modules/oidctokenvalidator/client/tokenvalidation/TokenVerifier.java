@@ -1,20 +1,18 @@
 package org.mule.modules.oidctokenvalidator.client.tokenvalidation;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.proc.JWTClaimsVerifier;
 import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.openid.connect.sdk.Nonce;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import com.nimbusds.openid.connect.sdk.validators.IDTokenClaimsVerifier;
-import com.nimbusds.openid.connect.sdk.validators.IDTokenValidator;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import org.opensaml.ws.wsaddressing.To;
-
 import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
 
@@ -68,7 +66,7 @@ public class TokenVerifier {
             if (!currentClaims.getSubject().equals(newClaims.getSubject())){
                 throw new TokenValidationException("Refreshed ID token subject doesn't match current subject");
             }
-            if (currentClaims.getIssueTime().getTime() > System.currentTimeMillis()){
+            if (newClaims.getIssueTime().getTime() > System.currentTimeMillis()){
                 throw new TokenValidationException("Invalid issue time in refreshed ID token");
             }
             if (!currentClaims.getAudience().equals(newClaims.getAudience())){
@@ -80,7 +78,7 @@ public class TokenVerifier {
     }
 
 	public boolean isActive(AccessToken accessToken) throws ParseException {
-		JWTClaimsSet claimsSet = SignedJWT.parse(accessToken.getValue()).getJWTClaimsSet();
+        JWTClaimsSet claimsSet = JWTParser.parse(accessToken.getValue()).getJWTClaimsSet();
 		long expTime = claimsSet.getExpirationTime().getTime();
 		long notBeforeTime = claimsSet.getNotBeforeTime().getTime();
 		return System.currentTimeMillis() < expTime && System.currentTimeMillis() >= notBeforeTime;

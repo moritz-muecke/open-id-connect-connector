@@ -12,7 +12,6 @@ import org.mule.api.annotations.Processor;
 import org.mule.api.annotations.display.FriendlyName;
 import org.mule.api.annotations.display.Password;
 import org.mule.api.annotations.lifecycle.Start;
-import org.mule.api.annotations.param.InboundHeaders;
 import org.mule.api.callback.SourceCallback;
 import org.mule.api.store.ListableObjectStore;
 import org.mule.api.store.ObjectStoreException;
@@ -68,7 +67,7 @@ public class OIDCTokenValidatorConnector {
      * the given bearer token from the request header. Intercepts the flow if token isn't valid, otherwise it continues
      * processing. If claim extraction is activated, set of id-token claims is added to the flow variables.
      * 
-     * {@sample.xml ../../../doc/oidc-token-validator-connector.xml.sample
+     * {@sample.xml ../../../doc/oidc-token-validator.xml.sample
 	 * oidc-token-validator:online-token-validation}
      * 
      * @param callback injected by devkit
@@ -120,7 +119,7 @@ public class OIDCTokenValidatorConnector {
      * Uses a internal class to validate the token. Intercepts the flow if token isn't valid, otherwise it continues
      * processing. If claim extraction is activated, set of id-token claims is added to the flow variables.
      * 
-     * {@sample.xml ../../../doc/oidc-token-validator-connector.xml.sample
+     * {@sample.xml ../../../doc/oidc-token-validator.xml.sample
 	 * oidc-token-validator:local-token-validation}
      * 
      * @param callback injected by devkit
@@ -157,7 +156,7 @@ public class OIDCTokenValidatorConnector {
      * active session. Otherwise it enhances the request with the Authorization header and continues processing of the
      * current flow.
      *
-     * {@sample.xml ../../../doc/oidc-token-validator-connector.xml.sample
+     * {@sample.xml ../../../doc/oidc-token-validator.xml.sample
 	 * oidc-token-validator:act-as-relying-party}
      *
      * @param callback injected by devkit
@@ -202,12 +201,14 @@ public class OIDCTokenValidatorConnector {
         } catch (Exception e) {
             changeResponseStatus(muleMessage, Response.Status.INTERNAL_SERVER_ERROR);
             muleMessage.setPayload("An error occured: " + e.getMessage());
-            return muleMessage.getPayload();
+            //return muleMessage.getPayload();
+            throw e;
         }
     }
 
     /**
      * Helper method to change the status code and reason phrase of the current request/mule message
+     *
      * @param message MuleMessage where HTTP status properties are changed
      * @param statusType HTTP status type which should be configured
      */

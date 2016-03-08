@@ -94,8 +94,8 @@ class RelyingPartyHandlerSpec extends Specification {
         then:
         1 * tokenStorage.getData(tokenStorageId) >> tokenData
         1 * relyingPartyHandler.cookieExtractor(cookieHeader, RelyingPartyHandler.TOKEN_COOKIE_NAME) >> "tokenCookie"
-        1 * relyingPartyHandler.cookieExtractor(cookieHeader, RelyingPartyHandler.REDIRECT_COOKIE_NAME) >> "redirectCookie"
-        1 * relyingPartyHandler.refreshTokens(_, _, _) >> tokenData
+        1 * relyingPartyHandler.refreshTokens(tokenData) >> tokenData
+        1 * relyingPartyHandler.storeAndSetTokenCookie(tokenData) >> null
         1 * muleMessage.setOutboundProperty("Authorization", "Bearer tokenString")
     }
 
@@ -113,8 +113,8 @@ class RelyingPartyHandlerSpec extends Specification {
         then:
         1 * tokenStorage.getData(tokenStorageId) >> tokenData
         1 * relyingPartyHandler.cookieExtractor(cookieHeader, RelyingPartyHandler.TOKEN_COOKIE_NAME) >> "tokenCookie"
-        1 * relyingPartyHandler.cookieExtractor(cookieHeader, RelyingPartyHandler.REDIRECT_COOKIE_NAME) >> "redirectCookie"
-        1 * relyingPartyHandler.refreshTokens(_, _, _) >> tokenData
+        1 * relyingPartyHandler.refreshTokens(tokenData) >> tokenData
+        1 * relyingPartyHandler.storeAndSetTokenCookie(tokenData) >> null
         1 * muleMessage.setOutboundProperty("Authorization", "Bearer $accessToken.value")
     }
 
@@ -132,7 +132,6 @@ class RelyingPartyHandlerSpec extends Specification {
         then:
         1 * tokenStorage.getData(tokenStorageId) >> tokenData
         1 * relyingPartyHandler.cookieExtractor(cookieHeader, RelyingPartyHandler.TOKEN_COOKIE_NAME) >> "tokenCookie"
-        1 * relyingPartyHandler.cookieExtractor(cookieHeader, RelyingPartyHandler.REDIRECT_COOKIE_NAME) >> "redirectCookie"
         1 * tokenVerifier.isActive(accessToken) >> true
         1 * muleMessage.setOutboundProperty("Authorization", "Bearer $accessToken.value")
     }
@@ -157,13 +156,13 @@ class RelyingPartyHandlerSpec extends Specification {
         relyingPartyHandler.handleTokenRequest()
 
         then:
+        1 * relyingPartyHandler.cookieExtractor(cookieHeader, RelyingPartyHandler.REDIRECT_COOKIE_NAME) >> "redirectCookie"
         1 * redirectDataStorage.getData(redirectStorageId) >> redirectData
         1 * muleMessage.getInboundProperty("http.query.params") >> queryStringMap
         1 * redirectData.state >> state
         1 * tokenRequester.requestTokensFromSso('queryCode', ssoConfig) >> tokenData
         1 * tokenVerifier.verifyIdToken(idtoken, ssoConfig, nonce)
         1 * relyingPartyHandler.storeAndSetTokenCookie(_) >> null
-        1 * redirectDataStorage.removeData(redirectStorageId)
         1 * muleMessage.setOutboundProperty("Authorization", "Bearer tokenString")
     }
 
@@ -195,6 +194,7 @@ class RelyingPartyHandlerSpec extends Specification {
         relyingPartyHandler.handleTokenRequest()
 
         then:
+        1 * relyingPartyHandler.cookieExtractor(cookieHeader, RelyingPartyHandler.REDIRECT_COOKIE_NAME) >> "redirectCookie"
         1 * redirectDataStorage.getData(redirectStorageId) >> redirectData
         1 * muleMessage.getInboundProperty("http.query.params") >> queryStringMap
         1 * redirectData.state >> state
@@ -203,7 +203,6 @@ class RelyingPartyHandlerSpec extends Specification {
         }
         0 * tokenVerifier.verifyIdToken(_, _, _)
         0 * relyingPartyHandler.storeAndSetTokenCookie(_)
-        1 * redirectDataStorage.removeData(redirectStorageId)
         1 * relyingPartyHandler.handleRedirect() >> null
     }
 
@@ -227,33 +226,31 @@ class RelyingPartyHandlerSpec extends Specification {
     def "refresh tokens returns token data"() {
         setup:
         def tokenData = Mock(TokenData)
-        tokenData.cookieId >> Mock(JWT)
         def refreshedTokenData = Mock(TokenData)
         def idToken = Mock(JWT)
         refreshedTokenData.idToken >> idToken
-        def tokenEntryId = "tokenEntry"
-        def redirectEntryId = "redirectEntry"
+        tokenData.idToken >> idToken
         tokenRequester.refreshTokenSet(tokenData, ssoConfig) >> refreshedTokenData
-        relyingPartyHandler.storeAndSetTokenCookie(refreshedTokenData) >> null
 
         expect:
-        relyingPartyHandler.refreshTokens(tokenData, tokenEntryId, redirectEntryId) == refreshedTokenData
-        relyingPartyHandler.refreshTokens(tokenData, tokenEntryId, redirectEntryId).idToken == idToken
+        relyingPartyHandler.refreshTokens(tokenData) == refreshedTokenData
+        relyingPartyHandler.refreshTokens(tokenData).idToken == idToken
     }
 
 
     def "refresh tokens fails with RequestTokenFromSsoException and returns null"() {
-        setup:
+        given:
         def tokenData = Mock(TokenData)
-        def tokenEntryId = "tokenEntry"
-        def redirectEntryId = "redirectEntry"
         tokenRequester.refreshTokenSet(tokenData, ssoConfig) >> {
             throw new RequestTokenFromSsoException("Token request failed")
         }
-        relyingPartyHandler.handleRedirect() >> null
 
-        expect:
-        relyingPartyHandler.refreshTokens(tokenData, tokenEntryId, redirectEntryId) == null
+        when:
+        relyingPartyHandler.refreshTokens(tokenData)
+
+        then:
+        RequestTokenFromSsoException e = thrown()
+        e.message == "Token request failed"
     }
 
     def "save redirect data in storage and set cookie"() {

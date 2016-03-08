@@ -8,8 +8,6 @@ import javax.ws.rs.core.UriBuilder;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.oauth2.sdk.ParseException;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
-import com.nimbusds.oauth2.sdk.auth.Secret;
-import com.nimbusds.oauth2.sdk.id.ClientID;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 
 public class SingleSignOnConfig {

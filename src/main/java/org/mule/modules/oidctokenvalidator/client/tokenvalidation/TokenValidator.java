@@ -2,10 +2,8 @@ package org.mule.modules.oidctokenvalidator.client.tokenvalidation;
 
 import java.io.IOException;
 
-import com.nimbusds.oauth2.sdk.token.Token;
 import net.minidev.json.JSONObject;
 
-import org.mule.modules.oidctokenvalidator.client.relyingparty.TokenRequester;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;

@@ -65,14 +65,23 @@ public class RelyingPartyHandler {
     public void handleRequest() throws ObjectStoreException, ParseException, java.text.ParseException {
         String cookieHeader = muleMessage.getInboundProperty("cookie");
         String tokenStorageEntryId = cookieExtractor(cookieHeader, TOKEN_COOKIE_NAME);
-        String redirectStorageEntryId = cookieExtractor(cookieHeader, REDIRECT_COOKIE_NAME);
         TokenData tokenData = tokenStorage.getData(tokenStorageEntryId);
-        if (instantRefresh) {
-            tokenData = refreshTokens(tokenData, tokenStorageEntryId, redirectStorageEntryId);
-        } else if(!verifier.isActive(tokenData.getAccessToken())) {
-            tokenData = refreshTokens(tokenData, tokenStorageEntryId, redirectStorageEntryId);
+        if (instantRefresh || !verifier.isActive(tokenData.getAccessToken())) {
+            try {
+                tokenData = refreshTokens(tokenData);
+                storeAndSetTokenCookie(tokenData);
+            } catch (IOException | TokenValidationException | RequestTokenFromSsoException e) {
+                handleRedirect();
+                return;
+            }
         }
-        if(tokenData != null) muleMessage.setOutboundProperty(HttpHeaders.Names.AUTHORIZATION, "Bearer " + tokenData.getAccessToken().getValue());
+        muleMessage.setOutboundProperty(HttpHeaders.Names.AUTHORIZATION, "Bearer " + tokenData.getAccessToken().getValue());
+    }
+
+    public TokenData refreshTokens(TokenData tokenData) throws TokenValidationException, ParseException, RequestTokenFromSsoException, IOException {
+        TokenData refreshedTokenData = tokenRequester.refreshTokenSet(tokenData, ssoConfig);
+        verifier.verifyRefreshedIdToken(tokenData.getIdToken(), refreshedTokenData.getIdToken());
+        return refreshedTokenData;
     }
 
     public void handleTokenRequest() throws ObjectStoreException {
@@ -89,10 +98,8 @@ public class RelyingPartyHandler {
                 TokenData tokenData = tokenRequester.requestTokensFromSso(authCode, ssoConfig);
                 verifier.verifyIdToken(tokenData.getIdToken(), ssoConfig, redirectData.getNonce());
                 storeAndSetTokenCookie(tokenData);
-                redirectDataStorage.removeData(redirectEntryId);
                 muleMessage.setOutboundProperty(HttpHeaders.Names.AUTHORIZATION, "Bearer " + tokenData.getAccessToken().getValue());
             } catch (RequestTokenFromSsoException | TokenValidationException e) {
-                redirectDataStorage.removeData(redirectEntryId);
                 handleRedirect();
             }
         }
@@ -105,27 +112,19 @@ public class RelyingPartyHandler {
         setRedirectToSso(authRequest.toURI());
     }
 
-    public TokenData refreshTokens(TokenData tokenData, String tokenStorageEntryId, String redirectStorageEntryId) throws ObjectStoreException, ParseException {
-        TokenData refreshedTokenData = null;
-        try {
-            refreshedTokenData = tokenRequester.refreshTokenSet(tokenData, ssoConfig);
-            verifier.verifyRefreshedIdToken(tokenData.getIdToken(), refreshedTokenData.getIdToken());
-            storeAndSetTokenCookie(refreshedTokenData);
-        } catch (RequestTokenFromSsoException | IOException | TokenValidationException e) {
-            tokenStorage.removeData(tokenStorageEntryId);
-            redirectDataStorage.removeData(redirectStorageEntryId);
-            handleRedirect();
-        }
-        return refreshedTokenData;
-    }
-
     public void storeAndSetRedirectCookie(RedirectData redirectData) throws ObjectStoreException {
+        String cookieHeader = muleMessage.getInboundProperty("cookie");
+        String tokenStorageEntryId = cookieExtractor(cookieHeader, TOKEN_COOKIE_NAME);
+        if (tokenStorageEntryId != null) tokenStorage.removeData(tokenStorageEntryId);
         redirectDataStorage.storeData(redirectData.getCookieId(), redirectData);
         Cookie cookie = new Cookie(ssoConfig.getRedirectUri().toString(), REDIRECT_COOKIE_NAME, redirectData.getCookieId());
         muleMessage.setOutboundProperty(HttpHeaders.Names.SET_COOKIE, cookie);
     }
 
     public void storeAndSetTokenCookie(TokenData tokenData) throws ObjectStoreException {
+        String cookieHeader = muleMessage.getInboundProperty("cookie");
+        String redirectStorageEntryId = cookieExtractor(cookieHeader, REDIRECT_COOKIE_NAME);
+        if (redirectStorageEntryId != null) redirectDataStorage.removeData(redirectStorageEntryId);
         tokenStorage.storeData(tokenData.getCookieId(), tokenData);
         Cookie cookie = new Cookie(ssoConfig.getRedirectUri().toString(), TOKEN_COOKIE_NAME, tokenData.getCookieId());
         muleMessage.setOutboundProperty(HttpHeaders.Names.SET_COOKIE, cookie);

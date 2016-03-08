@@ -73,7 +73,7 @@ public class OpenIDConnectMetaDataBuilder {
         return builder.build();
 	}
 	
-	private String requestJsonString(URI uri) {
+	public String requestJsonString(URI uri) {
 		WebTarget webTarget = client.target(uri);
         Invocation.Builder invocationBuilder = webTarget.request(MediaType.APPLICATION_JSON_TYPE);
         Response response = invocationBuilder.get();

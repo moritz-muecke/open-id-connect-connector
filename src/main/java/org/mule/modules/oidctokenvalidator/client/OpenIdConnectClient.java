@@ -2,20 +2,14 @@ package org.mule.modules.oidctokenvalidator.client;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.oauth2.sdk.ParseException;
-import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
-import com.nimbusds.oauth2.sdk.auth.Secret;
-import com.nimbusds.oauth2.sdk.id.ClientID;
 import org.mule.api.store.ObjectStoreException;
 import org.mule.modules.oidctokenvalidator.client.relyingparty.RelyingPartyHandler;
 import org.mule.modules.oidctokenvalidator.client.tokenvalidation.TokenValidator;
-import org.mule.modules.oidctokenvalidator.config.ConnectorConfig;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Map;
 
 public class OpenIdConnectClient {
