@@ -5,9 +5,7 @@ import org.mule.modules.oidctokenvalidator.config.OpenIDConnectMetaDataBuilder
 import spock.lang.Specification
 
 
-/**
- * Created by moritz.moeller on 08.03.2016.
- */
+
 class OpenIdConnectMetaDataBuilderSpec extends Specification {
     def uri = new URI("http://localhost")
     def metaDataBuilder = Spy(OpenIDConnectMetaDataBuilder, constructorArgs: [uri])

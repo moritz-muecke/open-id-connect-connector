@@ -26,6 +26,16 @@ import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;
 import com.nimbusds.openid.connect.sdk.SubjectType;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 
+/**
+ * This class is responsible to build and provide meta data of an OpenID Connect
+ * Identity-Provider. The data is provided manually with the parameters of the
+ * ConnectorConfig or through HTTP from IdP. To obtain the configuration from
+ * IdP the specified OpenID Configuration discovery is used.
+ *
+ * @author Moritz Möller, AOE GmbH
+ * @see http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
+ *
+ */
 public class OpenIDConnectMetaDataBuilder {
 	
 	private Client client;
@@ -35,12 +45,29 @@ public class OpenIDConnectMetaDataBuilder {
 		this.providerUri = providerUri;
 		client = ClientBuilder.newClient();
 	}
-	
+
+
+    /**
+     * Calls the requestJsonString to obtain configuration data from the IdP
+     * and returns the IdP-metadata
+     *
+     * @param configurationEndpoint Endpoint at the IdP to obtain configuration data
+     * @return the IdP-metadata
+     * @throws ParseException Thrown if the JSON from the response can not be parsed
+     */
 	public OIDCProviderMetadata provideMetadataFromServer(String configurationEndpoint) throws ParseException {
         URI metadataURI = uriBuilder(providerUri, configurationEndpoint);
         return OIDCProviderMetadata.parse(requestJsonString(metadataURI));
 	}
-	
+
+    /**
+     * Builds and returns the IdP-metadata manually from parameters passed in when called.
+     *
+     * @param authEndpoint Authorization endpoint
+     * @param tokenEndpoint Token endpoint
+     * @param jwkSetEndpoint JSON Web Key endpoint
+     * @return the IdP-metadata
+     */
 	public OIDCProviderMetadata provideMetadataManually(String authEndpoint, String tokenEndpoint, String jwkSetEndpoint) {
         Issuer issuer = new Issuer(providerUri);
         List<SubjectType> subjectTypes = new ArrayList<>();
@@ -51,7 +78,17 @@ public class OpenIDConnectMetaDataBuilder {
         metaData.applyDefaults();
         return metaData;
 	}
-	
+
+    /**
+     * Calls and parses the requestJsonString to obtain the JSON Web Key configuration from the IdP
+     * and returns the RSAPublicKey which is used to verify the signed JSON Web Tokens
+     *
+     * @param providerMetadata IdP metadata
+     * @return The RSAPublicKey of the IdP
+     * @throws ParseException
+     * @throws JOSEException
+     * @throws java.text.ParseException
+     */
 	public RSAPublicKey providePublicKey(OIDCProviderMetadata providerMetadata) throws ParseException, JOSEException, java.text.ParseException {
 		URI jwkSetUri = providerMetadata.getJWKSetURI();
         String metaDataResponse = requestJsonString(jwkSetUri);
@@ -67,12 +104,25 @@ public class OpenIDConnectMetaDataBuilder {
         }
         return publicKey;
 	}
-	
+
+    /**
+     * Helper method to extend and build URIs
+     *
+     * @param uri Base URI
+     * @param path Path to be extend
+     * @return New URI
+     */
 	private URI uriBuilder(URI uri, String path) {
 		UriBuilder builder = UriBuilder.fromUri(uri).path(path);
         return builder.build();
 	}
-	
+
+    /**
+     * Requests JSON from given endpoint via HTTP and returns it as string
+     *
+     * @param uri Endpoint to obtain JSON from
+     * @return JSON content as string
+     */
 	public String requestJsonString(URI uri) {
 		WebTarget webTarget = client.target(uri);
         Invocation.Builder invocationBuilder = webTarget.request(MediaType.APPLICATION_JSON_TYPE);

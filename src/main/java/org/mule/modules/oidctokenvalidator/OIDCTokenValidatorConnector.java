@@ -39,7 +39,17 @@ import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.Set;
 
-
+/**
+ * This connector is used to validate of bearer tokens obtained from the http 'Authorization' header
+ * or to act as an OpenID Connect relying party.
+ * You can choose between local token validation and online token validation by token introspection.
+ * Online means you have to configure the introspection endpoint of your identity provider. Tokens
+ * will then be validated via the http introspection endpoint. If the connector acts as relying party,
+ * you will need an id and a secret for this client, registered on the identity provider side.
+ *
+ * @author Moritz Möller, AOE GmbH
+ *
+ */
 @Connector(name="oidc-token-validator", friendlyName="OIDCTokenValidator")
 public class OIDCTokenValidatorConnector {
 

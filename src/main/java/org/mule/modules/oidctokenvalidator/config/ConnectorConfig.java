@@ -7,11 +7,21 @@ import org.mule.api.annotations.display.Placement;
 import org.mule.api.annotations.param.Default;
 import org.mule.api.annotations.param.Optional;
 
+/**
+ * This is the global connector configuration supported by the anypoint devkit.
+ * Configures all necessary parameters to communicate with the identity provider.
+ *
+ * @author Moritz Möller, AOE GmbH
+ *
+ */
 @Configuration(friendlyName = "Configuration")
 public class ConnectorConfig {
-	
+
+    /**
+     * Server URL
+     */
 	@Configurable
-    @FriendlyName("SSO Server URL")
+    @FriendlyName("Server URL")
     @Default("http://localhost")
 	private String ssoServerUrl;
     
@@ -24,10 +34,10 @@ public class ConnectorConfig {
 	}
 
 	/**
-     * SSO Server port
+     * Server port
      */
 	@Configurable
-	@FriendlyName("SSO port number")
+	@FriendlyName("Server port number")
 	@Default("8080")
 	private int ssoPort;
 	
@@ -40,10 +50,10 @@ public class ConnectorConfig {
 	}
 
 	/**
-     * SSO OIDC endpoint
+     * OpenID Connect issuer endpoint
      */
     @Configurable
-    @FriendlyName("SSO issuer endpoint")
+    @FriendlyName("OpenID Connect issuer endpoint")
     @Default("/auth/realms/master")
     private String ssoIssuerEndpoint;
 
@@ -56,7 +66,7 @@ public class ConnectorConfig {
 	}
 	
 	/**
-	 * Endpoint to retrieve OP configuration
+	 * Endpoint to retrieve the Identity-Provider configuration
 	 */
 	@Configurable
 	@FriendlyName("OpenID Configuration discovery endpoint")
@@ -89,7 +99,7 @@ public class ConnectorConfig {
 	}
 	
 	/**
-	 *Authorization endpoint. HINT: This is a optional parameter if OpenID Configuration discovery is active
+	 *Authorization endpoint. OPTIONAL: This is a optional parameter if OpenID Configuration discovery is active
 	 */
 	@Configurable
 	@Optional
@@ -106,7 +116,7 @@ public class ConnectorConfig {
 	}
 	
 	/**
-	 *Token endpoint. HINT: This is a optional parameter if OpenID Configuration discovery is active
+	 *Token endpoint. OPTIONAL: This is a optional parameter if OpenID Configuration discovery is active
 	 */
 	@Configurable
 	@Optional
@@ -123,7 +133,7 @@ public class ConnectorConfig {
 	}
 
 	/**
-	 * JWK-Set endpoint. HINT: This is a optional parameter if OpenID Configuration discovery is active
+	 * JWK-Set endpoint. OPTIONAL: This is a optional parameter if OpenID Configuration discovery is active
 	 */
 	@Configurable
 	@Optional

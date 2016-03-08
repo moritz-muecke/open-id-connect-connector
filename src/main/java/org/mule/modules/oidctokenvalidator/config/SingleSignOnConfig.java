@@ -10,6 +10,13 @@ import com.nimbusds.oauth2.sdk.ParseException;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 
+/**
+ * This config extends the ConnectorConfig with several fields and parameters which
+ * are needed for the communication with the SingleSignOn Server
+ *
+ * @author Moritz Möller, AOE GmbH
+ *
+ */
 public class SingleSignOnConfig {
 	private OIDCProviderMetadata providerMetadata;
 	private RSAPublicKey rsaPublicKey;
@@ -26,18 +33,26 @@ public class SingleSignOnConfig {
 	
 	public SingleSignOnConfig(ConnectorConfig config) {
 		this.config = config;
-		buildSsoUri();
-		metaDataBuilder = new OpenIDConnectMetaDataBuilder(ssoUri);
-	}
-	
-	public void buildSsoUri() {
 		UriBuilder builder = UriBuilder
 				.fromUri(config.getSsoServerUrl())
 				.port(config.getSsoPort())
 				.path(config.getSsoIssuerEndpoint());
-		ssoUri = builder.build();
+		this.ssoUri = builder.build();
+		this.metaDataBuilder = new OpenIDConnectMetaDataBuilder(ssoUri);
 	}
-	
+
+	/**
+	 * Depending on the config discovery parameter, this method builds the
+     * Identity-Provider meta data. If config discovery is enabled, it calls an HTTP
+     * endpoint at the IdP to collect the needed information. Otherwise it extracts
+     * the information out of the ConnectorConfig.
+     * If one of the exceptions occurs, the mule flow is intercepted because the
+     * connector can not work correctly without the IdP meta data.
+     *
+	 * @throws ParseException
+	 * @throws JOSEException
+	 * @throws java.text.ParseException
+     */
 	public void buildProviderMetadata() throws ParseException, JOSEException, java.text.ParseException {
 		if(config.isConfigDiscovery()) {
 			providerMetadata = metaDataBuilder.provideMetadataFromServer(config.getConfigDiscoveryEndpoint());
