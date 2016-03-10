@@ -33,7 +33,7 @@ import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
  * IdP the specified OpenID Configuration discovery is used.
  *
  * @author Moritz Möller, AOE GmbH
- * @see http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
+ * @see <a href="http://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig">OpenID Connect spec</a>
  *
  */
 public class OpenIDConnectMetaDataBuilder {
@@ -48,8 +48,7 @@ public class OpenIDConnectMetaDataBuilder {
 
 
     /**
-     * Calls the requestJsonString to obtain configuration data from the IdP
-     * and returns the IdP-metadata
+     * Obtains the IdP configuration as JSON String via requestJsonString() to build and return the IdP-metadata
      *
      * @param configurationEndpoint Endpoint at the IdP to obtain configuration data
      * @return the IdP-metadata
@@ -61,7 +60,7 @@ public class OpenIDConnectMetaDataBuilder {
 	}
 
     /**
-     * Builds and returns the IdP-metadata manually from parameters passed in when called.
+     * Builds and returns the IdP-metadata manually from parameters passed to it.
      *
      * @param authEndpoint Authorization endpoint
      * @param tokenEndpoint Token endpoint
@@ -80,8 +79,8 @@ public class OpenIDConnectMetaDataBuilder {
 	}
 
     /**
-     * Calls and parses the requestJsonString to obtain the JSON Web Key configuration from the IdP
-     * and returns the RSAPublicKey which is used to verify the signed JSON Web Tokens
+     * Parses a JSON string obtained from requestJsonString() to obtain the JSON Web Key configuration from the IdP
+     * and returns the RSAPublicKey
      *
      * @param providerMetadata IdP metadata
      * @return The RSAPublicKey of the IdP
