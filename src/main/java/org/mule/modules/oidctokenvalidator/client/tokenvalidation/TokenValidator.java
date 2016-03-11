@@ -35,7 +35,7 @@ public class TokenValidator {
 			HTTPResponse introSpectionHttpResponse = introspectionRequest
 					.toHTTPRequest().send();
 
-			// TODO: Ghetto Fix, because of Keycloak Bug
+			// TODO: Ghetto Fix, because Keycloak does not set the content type in introspection response
 			introSpectionHttpResponse
 					.setContentType(CommonContentTypes.APPLICATION_JSON);
 
@@ -66,7 +66,7 @@ public class TokenValidator {
 			throws TokenValidationException {
 		try {
 			AccessToken accessToken = AccessToken.parse(authHeader);
-			return verifier.verifyAccessToken(accessToken, ssoConfig.getRsaPublicKey() ,ssoConfig.getSsoUri().toString());
+			return verifier.verifyAccessToken(accessToken, ssoConfig.getRsaPublicKey(), ssoConfig.getSsoUri().toString());
 		} catch (Exception e) {
 			throw new TokenValidationException(e.getMessage());
 		}
