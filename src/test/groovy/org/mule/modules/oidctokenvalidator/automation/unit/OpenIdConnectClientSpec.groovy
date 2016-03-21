@@ -24,7 +24,7 @@ class OpenIdConnectClientSpec extends Specification {
 
         then:
         1 * handler.hasTokenCookieAndIsStored() >> true
-        1 * handler.handleRequest()
+        1 * handler.handleResourceRequest()
         0 * handler.hasRedirectCookieAndIsStored()
         0 * handler.handleTokenRequest()
         0 * handler.handleRedirect()
@@ -39,7 +39,7 @@ class OpenIdConnectClientSpec extends Specification {
 
         then:
         1 * handler.hasTokenCookieAndIsStored() >> false
-        0 * handler.handleRequest()
+        0 * handler.handleResourceRequest()
         1 * handler.hasRedirectCookieAndIsStored() >> true
         1 * handler.handleTokenRequest()
         0 * handler.handleRedirect()
@@ -54,7 +54,7 @@ class OpenIdConnectClientSpec extends Specification {
 
         then:
         1 * handler.hasTokenCookieAndIsStored() >> false
-        0 * handler.handleRequest()
+        0 * handler.handleResourceRequest()
         1 * handler.hasRedirectCookieAndIsStored() >> false
         0 * handler.handleTokenRequest()
         1 * handler.handleRedirect()

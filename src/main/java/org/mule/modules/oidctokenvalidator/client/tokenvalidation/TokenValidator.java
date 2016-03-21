@@ -17,10 +17,14 @@ import com.nimbusds.oauth2.sdk.TokenIntrospectionSuccessResponse;
 import com.nimbusds.oauth2.sdk.http.CommonContentTypes;
 import com.nimbusds.oauth2.sdk.http.HTTPResponse;
 import com.nimbusds.oauth2.sdk.token.AccessToken;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TokenValidator {
 
 	private TokenVerifier verifier;
+
+	private static final Logger logger = LoggerFactory.getLogger(TokenValidator.class);
 
 	public TokenValidator(TokenVerifier verifier) {
 		this.verifier = verifier;
@@ -32,32 +36,42 @@ public class TokenValidator {
 			AccessToken accessToken = AccessToken.parse(authHeader);
 
 			TokenIntrospectionRequest introspectionRequest = createTokenIntrospectionRequest(accessToken, ssoConfig);
-			HTTPResponse introSpectionHttpResponse = introspectionRequest
+
+			logger.debug("Sending token introspection HTTP request to identity provider");
+			HTTPResponse introspectionHttpResponse = introspectionRequest
 					.toHTTPRequest().send();
 
 			// TODO: Ghetto Fix, because Keycloak does not set the content type in introspection response
-			introSpectionHttpResponse
+			introspectionHttpResponse
 					.setContentType(CommonContentTypes.APPLICATION_JSON);
 
 			TokenIntrospectionResponse introspectionResponse = TokenIntrospectionResponse
-					.parse(introSpectionHttpResponse);
+					.parse(introspectionHttpResponse);
 
 			if (introspectionResponse instanceof TokenIntrospectionErrorResponse) {
+				logger.debug("Received an error response from introspection request");
 				ErrorObject errorResponse = ((TokenIntrospectionErrorResponse) introspectionResponse)
 						.getErrorObject();
 				throw new TokenValidationException(
 						errorResponse.getDescription());
 			}
 
-			TokenIntrospectionSuccessResponse successResponse = (TokenIntrospectionSuccessResponse) introspectionResponse;
+			TokenIntrospectionSuccessResponse successResponse =
+					(TokenIntrospectionSuccessResponse) introspectionResponse;
 			JSONObject claims = successResponse.toJSONObject();
 			if (!(boolean)claims.get("active")) {
+				logger.debug("Token validation with introspection failed. Token isn't active");
 				throw new TokenValidationException("Token is not active");
 			}
 			return claims;
 		} catch (IOException e) {
-			throw new HTTPConnectException(String.format("Could not connect to the identity provider %s - Error: %s", ssoConfig.getSsoUri(), e.getMessage()));
+			logger.debug("Could not connect to identity provider for token introspection");
+			throw new HTTPConnectException(
+					String.format("Could not connect to the identity provider %s - Error: %s",
+							ssoConfig.getSsoUri(), e.getMessage())
+			);
 		} catch (Exception e) {
+			logger.debug("Error during token introspection. Exception: {}, Message: {}", e.getCause(), e.getMessage());
 			throw new TokenValidationException(e.getMessage());
 		}
 	}
@@ -66,13 +80,18 @@ public class TokenValidator {
 			throws TokenValidationException {
 		try {
 			AccessToken accessToken = AccessToken.parse(authHeader);
-			return verifier.verifyAccessToken(accessToken, ssoConfig.getRsaPublicKey(), ssoConfig.getSsoUri().toString());
+			return verifier.verifyAccessToken(
+					accessToken, ssoConfig.getRsaPublicKey(), ssoConfig.getSsoUri().toString()
+			);
 		} catch (Exception e) {
+			logger.debug("Error during local token validation. Exception: {}, Message: {}",
+					e.getCause(), e.getMessage());
 			throw new TokenValidationException(e.getMessage());
 		}
 	}
 	
-	public TokenIntrospectionRequest createTokenIntrospectionRequest(AccessToken accessToken, SingleSignOnConfig ssoConfig) {
+	public TokenIntrospectionRequest createTokenIntrospectionRequest(
+			AccessToken accessToken, SingleSignOnConfig ssoConfig) {
 		return new TokenIntrospectionRequest(
 				ssoConfig.getIntrospectionUri(),
 				ssoConfig.getClientSecretBasic(),

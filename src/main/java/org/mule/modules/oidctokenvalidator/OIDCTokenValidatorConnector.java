@@ -254,8 +254,8 @@ public class OIDCTokenValidatorConnector {
             }
         } catch (Exception e) {
             changeResponseStatus(muleMessage, Response.Status.INTERNAL_SERVER_ERROR);
-            logger.debug("Error due acting as relying party. Exception: {}. Reason: {}", e.getCause(), e.getMessage());
-            muleMessage.setPayload("An error occured: " + e.getMessage());
+            logger.debug("Error while acting as relying party. Exception: {}. Reason: {}", e.getCause(), e.getMessage());
+            muleMessage.setPayload("An error occurred: " + e.getMessage());
             return muleMessage.getPayload();
         }
     }

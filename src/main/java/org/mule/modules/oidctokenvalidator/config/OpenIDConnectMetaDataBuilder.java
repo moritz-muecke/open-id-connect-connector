@@ -25,6 +25,8 @@ import com.nimbusds.oauth2.sdk.id.Issuer;
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;
 import com.nimbusds.openid.connect.sdk.SubjectType;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is responsible to build and provide meta data of an OpenID Connect
@@ -40,8 +42,11 @@ public class OpenIDConnectMetaDataBuilder {
 	
 	private Client client;
 	private URI providerUri;
-	
-	public OpenIDConnectMetaDataBuilder(URI providerUri) {
+
+    private static final Logger logger = LoggerFactory.getLogger(OpenIDConnectMetaDataBuilder.class);
+
+
+    public OpenIDConnectMetaDataBuilder(URI providerUri) {
 		this.providerUri = providerUri;
 		client = ClientBuilder.newClient();
 	}
@@ -56,6 +61,7 @@ public class OpenIDConnectMetaDataBuilder {
      */
 	public OIDCProviderMetadata provideMetadataFromServer(String configurationEndpoint) throws ParseException {
         URI metadataURI = uriBuilder(providerUri, configurationEndpoint);
+        logger.debug("Sending HTTP request to retrieve metadata from identity provider");
         return OIDCProviderMetadata.parse(requestJsonString(metadataURI));
 	}
 
@@ -67,11 +73,14 @@ public class OpenIDConnectMetaDataBuilder {
      * @param jwkSetEndpoint JSON Web Key endpoint
      * @return the IdP-metadata
      */
-	public OIDCProviderMetadata provideMetadataManually(String authEndpoint, String tokenEndpoint, String jwkSetEndpoint) {
+	public OIDCProviderMetadata provideMetadataManually(
+            String authEndpoint, String tokenEndpoint, String jwkSetEndpoint) {
         Issuer issuer = new Issuer(providerUri);
         List<SubjectType> subjectTypes = new ArrayList<>();
         subjectTypes.add(SubjectType.PUBLIC);
-        OIDCProviderMetadata metaData = new OIDCProviderMetadata(issuer, subjectTypes, uriBuilder(providerUri, jwkSetEndpoint));
+        OIDCProviderMetadata metaData = new OIDCProviderMetadata(
+                issuer, subjectTypes, uriBuilder(providerUri, jwkSetEndpoint)
+        );
         metaData.setAuthorizationEndpointURI(uriBuilder(providerUri, authEndpoint));
         metaData.setTokenEndpointURI(uriBuilder(providerUri, tokenEndpoint));
         metaData.applyDefaults();
@@ -90,6 +99,7 @@ public class OpenIDConnectMetaDataBuilder {
      */
 	public RSAPublicKey providePublicKey(OIDCProviderMetadata providerMetadata) throws ParseException, JOSEException, java.text.ParseException {
 		URI jwkSetUri = providerMetadata.getJWKSetURI();
+        logger.debug("Sending HTTP request to retrieve JWK set from identity provider");
         String metaDataResponse = requestJsonString(jwkSetUri);
         JSONObject json = JSONObjectUtils.parse(metaDataResponse);
         RSAPublicKey publicKey = null;

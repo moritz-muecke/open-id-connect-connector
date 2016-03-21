@@ -9,6 +9,8 @@ import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
@@ -16,6 +18,8 @@ public class OpenIdConnectClient {
 
     private TokenValidator tokenValidator;
     private SingleSignOnConfig ssoConfig;
+
+    private static final Logger logger = LoggerFactory.getLogger(OpenIdConnectClient.class);
 
     public OpenIdConnectClient(SingleSignOnConfig ssoConfig, TokenValidator tokenValidator)
             throws MetaDataInitializationException {
@@ -33,13 +37,16 @@ public class OpenIdConnectClient {
         return jwtClaimSet.toJSONObject();
     }
 
-    public void actAsRelyingParty(RelyingPartyHandler relyingPartyHandler) throws ObjectStoreException, ParseException, java.text.ParseException {
-
+    public void actAsRelyingParty(RelyingPartyHandler relyingPartyHandler) throws
+            ObjectStoreException, ParseException, java.text.ParseException {
         if (relyingPartyHandler.hasTokenCookieAndIsStored()) {
-            relyingPartyHandler.handleRequest();
+            logger.debug("Token cookie found in request and store. Handling resource request");
+            relyingPartyHandler.handleResourceRequest();
         } else if (relyingPartyHandler.hasRedirectCookieAndIsStored()) {
+            logger.debug("Redirect cookie found in request and store. Handling token request");
             relyingPartyHandler.handleTokenRequest();
         } else {
+            logger.debug("No matching cookies found in request and store. Handling redirect");
             relyingPartyHandler.handleRedirect();
         }
     }

@@ -14,6 +14,8 @@ import org.mule.modules.oidctokenvalidator.client.tokenvalidation.TokenVerifier;
 import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.RequestTokenFromSsoException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -34,6 +36,9 @@ public class RelyingPartyHandler {
     private SingleSignOnConfig ssoConfig;
     private TokenVerifier verifier;
     private boolean instantRefresh;
+
+    private static final Logger logger = LoggerFactory.getLogger(RelyingPartyHandler.class);
+
 
     public RelyingPartyHandler(
             MuleMessage muleMessage,
@@ -62,23 +67,28 @@ public class RelyingPartyHandler {
         return redirectDataStorage.containsData(cookieExtractor(cookieHeader, REDIRECT_COOKIE_NAME));
     }
 
-    public void handleRequest() throws ObjectStoreException, ParseException, java.text.ParseException {
+    public void handleResourceRequest() throws ObjectStoreException, ParseException, java.text.ParseException {
         String cookieHeader = muleMessage.getInboundProperty("cookie");
         String tokenStorageEntryId = cookieExtractor(cookieHeader, TOKEN_COOKIE_NAME);
         TokenData tokenData = tokenStorage.getData(tokenStorageEntryId);
         if (instantRefresh || !verifier.isActive(tokenData.getAccessToken())) {
             try {
+                logger.debug("Refreshing tokens from Identity-Provider");
                 tokenData = refreshTokens(tokenData);
                 storeAndSetTokenCookie(tokenData);
             } catch (IOException | TokenValidationException | RequestTokenFromSsoException e) {
+                logger.debug("Error occurred while refreshing token. Redirecting to Identity-Provider");
                 handleRedirect();
                 return;
             }
         }
-        muleMessage.setOutboundProperty(HttpHeaders.Names.AUTHORIZATION, "Bearer " + tokenData.getAccessToken().getValue());
+        muleMessage.setOutboundProperty(
+                HttpHeaders.Names.AUTHORIZATION, "Bearer " + tokenData.getAccessToken().getValue()
+        );
     }
 
-    public TokenData refreshTokens(TokenData tokenData) throws TokenValidationException, ParseException, RequestTokenFromSsoException, IOException {
+    public TokenData refreshTokens(TokenData tokenData) throws
+            TokenValidationException, ParseException, RequestTokenFromSsoException, IOException {
         TokenData refreshedTokenData = tokenRequester.refreshTokenSet(tokenData, ssoConfig);
         verifier.verifyRefreshedIdToken(tokenData.getIdToken(), refreshedTokenData.getIdToken());
         return refreshedTokenData;
@@ -92,14 +102,18 @@ public class RelyingPartyHandler {
         String queryState = queryParams.get("state");
         String authCode = queryParams.get("code");
         if (!redirectData.getState().getValue().equals(queryState) || authCode == null) {
+            logger.debug("State mismatch or missing auth code. Redirecting to Identity-Provider");
             handleRedirect();
         } else {
             try {
                 TokenData tokenData = tokenRequester.requestTokensFromSso(authCode, ssoConfig);
                 verifier.verifyIdToken(tokenData.getIdToken(), ssoConfig, redirectData.getNonce());
                 storeAndSetTokenCookie(tokenData);
-                muleMessage.setOutboundProperty(HttpHeaders.Names.AUTHORIZATION, "Bearer " + tokenData.getAccessToken().getValue());
+                muleMessage.setOutboundProperty(
+                        HttpHeaders.Names.AUTHORIZATION, "Bearer " + tokenData.getAccessToken().getValue()
+                );
             } catch (RequestTokenFromSsoException | TokenValidationException e) {
+                logger.debug("Error occurred while requesting tokens. Redirecting to Identity-Provider");
                 handleRedirect();
             }
         }
@@ -113,15 +127,19 @@ public class RelyingPartyHandler {
     }
 
     public void storeAndSetRedirectCookie(RedirectData redirectData) throws ObjectStoreException {
+        logger.debug("Storing redirect data and setting the cookie");
         String cookieHeader = muleMessage.getInboundProperty("cookie");
         String tokenStorageEntryId = cookieExtractor(cookieHeader, TOKEN_COOKIE_NAME);
         if (tokenStorageEntryId != null) tokenStorage.removeData(tokenStorageEntryId);
         redirectDataStorage.storeData(redirectData.getCookieId(), redirectData);
-        Cookie cookie = new Cookie(ssoConfig.getRedirectUri().toString(), REDIRECT_COOKIE_NAME, redirectData.getCookieId());
+        Cookie cookie = new Cookie(
+                ssoConfig.getRedirectUri().toString(), REDIRECT_COOKIE_NAME, redirectData.getCookieId()
+        );
         muleMessage.setOutboundProperty(HttpHeaders.Names.SET_COOKIE, cookie);
     }
 
     public void storeAndSetTokenCookie(TokenData tokenData) throws ObjectStoreException {
+        logger.debug("Storing token data and setting the cookie");
         String cookieHeader = muleMessage.getInboundProperty("cookie");
         String redirectStorageEntryId = cookieExtractor(cookieHeader, REDIRECT_COOKIE_NAME);
         if (redirectStorageEntryId != null) redirectDataStorage.removeData(redirectStorageEntryId);
@@ -131,8 +149,14 @@ public class RelyingPartyHandler {
     }
 
     public void setRedirectToSso(URI redirectUri) {
-        muleMessage.setOutboundProperty(HttpConstants.ResponseProperties.HTTP_STATUS_PROPERTY, HttpConstants.HttpStatus.MOVED_TEMPORARILY.getStatusCode());
-        muleMessage.setOutboundProperty(HttpConstants.ResponseProperties.HTTP_REASON_PROPERTY, HttpConstants.HttpStatus.MOVED_TEMPORARILY.getReasonPhrase());
+        muleMessage.setOutboundProperty(
+                HttpConstants.ResponseProperties.HTTP_STATUS_PROPERTY,
+                HttpConstants.HttpStatus.MOVED_TEMPORARILY.getStatusCode()
+        );
+        muleMessage.setOutboundProperty(
+                HttpConstants.ResponseProperties.HTTP_REASON_PROPERTY,
+                HttpConstants.HttpStatus.MOVED_TEMPORARILY.getReasonPhrase()
+        );
         muleMessage.setOutboundProperty(HttpHeaders.Names.LOCATION, redirectUri);
     }
 

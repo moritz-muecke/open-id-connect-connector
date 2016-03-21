@@ -10,6 +10,8 @@ import com.nimbusds.oauth2.sdk.ParseException;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This config extends the ConnectorConfig with several fields and parameters which
@@ -32,7 +34,10 @@ public class SingleSignOnConfig {
 	private ConnectorConfig config;
 	
 	private OpenIDConnectMetaDataBuilder metaDataBuilder;
-	
+
+	private static final Logger logger = LoggerFactory.getLogger(SingleSignOnConfig.class);
+
+
 	public SingleSignOnConfig(ConnectorConfig config) {
 		this.config = config;
 		UriBuilder builder = UriBuilder
@@ -59,13 +64,19 @@ public class SingleSignOnConfig {
 		try {
             if(config.isConfigDiscovery()) {
                 providerMetadata = metaDataBuilder.provideMetadataFromServer(config.getConfigDiscoveryEndpoint());
-            } else providerMetadata = metaDataBuilder.provideMetadataManually(config.getAuthEndpoint(), config.getTokenEndpoint(), config.getJwkSetEndpoint());
-
+            } else {
+				providerMetadata = metaDataBuilder.provideMetadataManually(
+						config.getAuthEndpoint(), config.getTokenEndpoint(), config.getJwkSetEndpoint()
+				);
+			}
+			//TODO: Provide public key without idp request
             rsaPublicKey = metaDataBuilder.providePublicKey(providerMetadata);
             isInitialized = true;
         } catch (Exception e) {
-            throw new MetaDataInitializationException(
-                    String.format("Error during metadata initialization. Reason: %s", e.getMessage())
+			logger.debug("Error occurred while building identity provider meta data. Exception: {}, Message: {}",
+					e.getCause(), e.getMessage());
+			throw new MetaDataInitializationException(
+					String.format("Error during metadata initialization. Reason: %s", e.getMessage())
             );
         }
     }

@@ -89,7 +89,7 @@ class RelyingPartyHandlerSpec extends Specification {
 
         when:
         relyingPartyHandler.setInstantRefresh(true)
-        relyingPartyHandler.handleRequest()
+        relyingPartyHandler.handleResourceRequest()
 
         then:
         1 * tokenStorage.getData(tokenStorageId) >> tokenData
@@ -108,7 +108,7 @@ class RelyingPartyHandlerSpec extends Specification {
 
         when:
         relyingPartyHandler.setInstantRefresh(false)
-        relyingPartyHandler.handleRequest()
+        relyingPartyHandler.handleResourceRequest()
 
         then:
         1 * tokenStorage.getData(tokenStorageId) >> tokenData
@@ -127,7 +127,7 @@ class RelyingPartyHandlerSpec extends Specification {
 
         when:
         relyingPartyHandler.setInstantRefresh(false)
-        relyingPartyHandler.handleRequest()
+        relyingPartyHandler.handleResourceRequest()
 
         then:
         1 * tokenStorage.getData(tokenStorageId) >> tokenData

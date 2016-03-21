@@ -13,11 +13,19 @@ import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
 
 public class TokenVerifier {
-	public JWTClaimsSet verifyAccessToken(AccessToken accessToken, RSAPublicKey publicKey, String origin) throws TokenValidationException {
+
+	private static final Logger logger = LoggerFactory.getLogger(TokenVerifier.class);
+
+
+	public JWTClaimsSet verifyAccessToken(AccessToken accessToken, RSAPublicKey publicKey, String origin) throws
+			TokenValidationException {
 		try {
 			SignedJWT signedJWT = SignedJWT.parse(accessToken.getValue());
 			JWSVerifier verifier = new RSASSAVerifier(publicKey);
@@ -31,6 +39,8 @@ public class TokenVerifier {
 			
 			return claimSet;
 		} catch (Exception e) {
+			logger.debug("Error during access token verification. Exception: {}, Message: {}",
+					e.getCause(), e.getMessage());
 			throw new TokenValidationException(e.getMessage());
 		}
 	}
@@ -39,7 +49,9 @@ public class TokenVerifier {
 		try {
 			OIDCProviderMetadata metaData = ssoConfig.getProviderMetadata();
 			JWTClaimsSet claimSet = idToken.getJWTClaimsSet();
-			JWTClaimsVerifier verifier = new IDTokenClaimsVerifier(metaData.getIssuer(), ssoConfig.getClientSecretBasic().getClientID(), nonce, 0);
+			JWTClaimsVerifier verifier = new IDTokenClaimsVerifier(
+					metaData.getIssuer(), ssoConfig.getClientSecretBasic().getClientID(), nonce, 0
+			);
 			verifier.verify(claimSet);
 
             if(ssoConfig.getRsaPublicKey() != null) {
@@ -48,9 +60,11 @@ public class TokenVerifier {
                 if (!signedJWT.verify(jwsVerifier)){
                     throw new TokenValidationException("Wrong token signature");
                 }
-            }
+            } else throw new TokenValidationException("RSA public key is null");
 
 		} catch (Exception e) {
+			logger.debug("Error during id token verification. Exception: {}, Message: {}",
+					e.getCause(), e.getMessage());
 			throw new TokenValidationException(e.getMessage());
 		}
 
@@ -73,6 +87,8 @@ public class TokenVerifier {
                 throw new TokenValidationException("Refreshed ID token audience doesn't match current audience");
             }
         } catch (Exception e) {
+			logger.debug("Error during refresh token verification. Exception: {}, Message: {}",
+					e.getCause(), e.getMessage());
             throw new TokenValidationException(e.getMessage());
         }
     }

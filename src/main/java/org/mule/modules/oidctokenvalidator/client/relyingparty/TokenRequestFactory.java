@@ -9,7 +9,10 @@ import java.net.URI;
  * Created by moritz.moeller on 07.03.2016.
  */
 public class TokenRequestFactory {
-    public TokenRequest getTokenRequest(URI endpoint, ClientAuthentication clientAuthentication, AuthorizationGrant authCodeGrant){
+    public TokenRequest getTokenRequest(
+            URI endpoint,
+            ClientAuthentication clientAuthentication,
+            AuthorizationGrant authCodeGrant) {
         return new TokenRequest(endpoint, clientAuthentication, authCodeGrant);
     }
 }
