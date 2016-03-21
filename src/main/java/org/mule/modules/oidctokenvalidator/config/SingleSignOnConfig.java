@@ -9,6 +9,7 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.oauth2.sdk.ParseException;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
+import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
 
 /**
  * This config extends the ConnectorConfig with several fields and parameters which
@@ -26,6 +27,7 @@ public class SingleSignOnConfig {
 	private URI redirectUri;
 	private URI introspectionUri;
 	private URI ssoUri;
+	private boolean isInitialized = false;
 	
 	private ConnectorConfig config;
 	
@@ -53,13 +55,20 @@ public class SingleSignOnConfig {
 	 * @throws JOSEException
 	 * @throws java.text.ParseException
      */
-	public void buildProviderMetadata() throws ParseException, JOSEException, java.text.ParseException {
-		if(config.isConfigDiscovery()) {
-			providerMetadata = metaDataBuilder.provideMetadataFromServer(config.getConfigDiscoveryEndpoint());
-		} else providerMetadata = metaDataBuilder.provideMetadataManually(config.getAuthEndpoint(), config.getTokenEndpoint(), config.getJwkSetEndpoint());
-		
-		rsaPublicKey = metaDataBuilder.providePublicKey(providerMetadata);
-	}
+	public void buildProviderMetadata() throws MetaDataInitializationException {
+		try {
+            if(config.isConfigDiscovery()) {
+                providerMetadata = metaDataBuilder.provideMetadataFromServer(config.getConfigDiscoveryEndpoint());
+            } else providerMetadata = metaDataBuilder.provideMetadataManually(config.getAuthEndpoint(), config.getTokenEndpoint(), config.getJwkSetEndpoint());
+
+            rsaPublicKey = metaDataBuilder.providePublicKey(providerMetadata);
+            isInitialized = true;
+        } catch (Exception e) {
+            throw new MetaDataInitializationException(
+                    String.format("Error during metadata initialization. Reason: %s", e.getMessage())
+            );
+        }
+    }
 
 	public OIDCProviderMetadata getProviderMetadata() {
 		return providerMetadata;
@@ -115,5 +124,13 @@ public class SingleSignOnConfig {
 
 	public void setRedirectUri(URI redirectUri) {
 		this.redirectUri = redirectUri;
+	}
+
+	public boolean isInitialized() {
+		return isInitialized;
+	}
+
+	public void setInitialized(boolean initialized) {
+		isInitialized = initialized;
 	}
 }

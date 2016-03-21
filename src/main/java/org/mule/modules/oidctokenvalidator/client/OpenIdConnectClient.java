@@ -20,11 +20,6 @@ public class OpenIdConnectClient {
     public OpenIdConnectClient(SingleSignOnConfig ssoConfig, TokenValidator tokenValidator)
             throws MetaDataInitializationException {
         this.ssoConfig = ssoConfig;
-        try {
-            ssoConfig.buildProviderMetadata();
-        } catch (Exception e) {
-            throw new MetaDataInitializationException("Error during MetaData initialization from identity provider: " + e.getMessage());
-        }
         this.tokenValidator = tokenValidator;
     }
 

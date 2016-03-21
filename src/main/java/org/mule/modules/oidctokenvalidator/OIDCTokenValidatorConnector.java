@@ -11,6 +11,7 @@ import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.Processor;
 import org.mule.api.annotations.display.FriendlyName;
 import org.mule.api.annotations.display.Password;
+import org.mule.api.annotations.lifecycle.OnException;
 import org.mule.api.annotations.lifecycle.Start;
 import org.mule.api.callback.SourceCallback;
 import org.mule.api.store.ListableObjectStore;
@@ -29,6 +30,8 @@ import org.mule.modules.oidctokenvalidator.config.SingleSignOnConfig;
 import org.mule.modules.oidctokenvalidator.exception.HTTPConnectException;
 import org.mule.modules.oidctokenvalidator.exception.MetaDataInitializationException;
 import org.mule.modules.oidctokenvalidator.exception.TokenValidationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.ws.rs.core.HttpHeaders;
@@ -57,6 +60,8 @@ public class OIDCTokenValidatorConnector {
     private SingleSignOnConfig ssoConfig;
     private static final String HTTP_STATUS = HttpConstants.ResponseProperties.HTTP_STATUS_PROPERTY;
 
+    private static final Logger logger = LoggerFactory.getLogger(OIDCTokenValidatorConnector.class);
+
 	@Config
     ConnectorConfig config;
 
@@ -65,12 +70,19 @@ public class OIDCTokenValidatorConnector {
 
     @Start
     public void init() throws MetaDataInitializationException, ObjectStoreException {
+        logger.debug("Initializing OpenIDConnect Connector");
         ssoConfig = new SingleSignOnConfig(config);
+        try {
+            logger.debug("Building Identity-Provider metadata");
+            ssoConfig.buildProviderMetadata();
+        } catch (MetaDataInitializationException e) {
+            logger.error(e.getMessage());
+        }
         TokenVerifier verifier = new TokenVerifier();
         TokenValidator validator = new TokenValidator(verifier);
-    	client = new OpenIdConnectClient(ssoConfig, validator);
+        logger.debug("Instantiating client");
+        client = new OpenIdConnectClient(ssoConfig, validator);
     }
-    
         
     /**
      * Uses token introspection specified by OAUTH 2.0 to validate the token. It calls an api endpoint at the sso with
@@ -102,23 +114,30 @@ public class OIDCTokenValidatorConnector {
         ssoConfig.setClientSecretBasic(new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret)));
         try {
             String authHeader = muleMessage.getInboundProperty(HttpHeaders.AUTHORIZATION);
-    		Map<String, Object> claims = client.ssoTokenValidation(authHeader);
+    		logger.debug("Starting token introspection via identity provider");
+            Map<String, Object> claims = client.ssoTokenValidation(authHeader);
 			if (claimExtraction) {
-				muleMessage.setInvocationProperty("tokenClaims", claims);
+                logger.debug("Saving token claims as flow var tokenClaims");
+                muleMessage.setInvocationProperty("tokenClaims", claims);
 			}
             muleMessage.setOutboundProperty(HttpHeaders.AUTHORIZATION, authHeader);
             return callback.processEvent(muleEvent).getMessage().getPayload();
 		} catch (TokenValidationException e) {
+            logger.debug("Token validation failed. Reason: {}. Interrupting flow now", e.getMessage());
             changeResponseStatus(muleMessage, Response.Status.UNAUTHORIZED);
-            muleMessage.setOutboundProperty(HttpHeaders.WWW_AUTHENTICATE, String.format("Error=\"%s\"", e.getMessage()));
+            muleMessage.setOutboundProperty(
+                    HttpHeaders.WWW_AUTHENTICATE, String.format("Error=\"%s\"", e.getMessage())
+            );
             muleMessage.setPayload(e.getMessage());
 			return muleMessage.getPayload();
 		} catch (HTTPConnectException e) {
-			changeResponseStatus(muleMessage, Response.Status.SERVICE_UNAVAILABLE);
+            logger.debug("Could not connect to Identity Provider. Reason: {}. Interrupting flow now", e.getMessage());
+            changeResponseStatus(muleMessage, Response.Status.SERVICE_UNAVAILABLE);
             muleMessage.setPayload(e.getMessage());
 			throw e;
 		} catch (Exception e) {
-			changeResponseStatus(muleMessage, Response.Status.BAD_REQUEST);
+            logger.debug("Error during token introspection. Reason: {}. Interrupting flow now", e.getMessage());
+            changeResponseStatus(muleMessage, Response.Status.BAD_REQUEST);
             muleMessage.setPayload(e.getMessage());
 			return muleMessage.getPayload();
 		}
@@ -139,21 +158,33 @@ public class OIDCTokenValidatorConnector {
      */
     @Processor(intercepting = true)
     public Object localTokenValidation(SourceCallback callback, MuleEvent muleEvent, boolean claimExtraction) {
-		MuleMessage muleMessage = muleEvent.getMessage();
+        MuleMessage muleMessage = muleEvent.getMessage();
         try {
+            if (!ssoConfig.isInitialized()) ssoConfig.buildProviderMetadata();
             String authHeader = muleMessage.getInboundProperty(HttpHeaders.AUTHORIZATION);
+            logger.debug("Starting token validation via connector");
             Map<String, Object> claims = client.localTokenValidation(authHeader);
             if (claimExtraction) {
+                logger.debug("Saving token claims as flow var tokenClaims");
                 muleMessage.setInvocationProperty("tokenClaims", claims);
             }
             muleMessage.setOutboundProperty(HttpHeaders.AUTHORIZATION, authHeader);
             return callback.processEvent(muleEvent).getMessage().getPayload();
         } catch (TokenValidationException e) {
+            logger.debug("Token validation failed. Reason: {}. Interrupting flow now", e.getMessage());
             changeResponseStatus(muleMessage, Response.Status.UNAUTHORIZED);
-            muleMessage.setOutboundProperty(HttpHeaders.WWW_AUTHENTICATE, String.format("Error=\"%s\"", e.getMessage()));
+            muleMessage.setOutboundProperty(
+                    HttpHeaders.WWW_AUTHENTICATE, String.format("Error=\"%s\"", e.getMessage())
+            );
             muleMessage.setPayload(e.getMessage());
             return muleMessage.getPayload();
+        } catch (MetaDataInitializationException e) {
+            changeResponseStatus(muleMessage, Response.Status.SERVICE_UNAVAILABLE);
+            muleMessage.setPayload(e.getMessage());
+            logger.error(e.getMessage());
+            return muleMessage.getPayload();
         } catch (Exception e) {
+            logger.debug("Error during token introspection. Reason: {}. Interrupting flow now", e.getMessage());
             changeResponseStatus(muleMessage, Response.Status.BAD_REQUEST);
             muleMessage.setPayload(e.getMessage());
             return muleMessage.getPayload();
@@ -190,29 +221,42 @@ public class OIDCTokenValidatorConnector {
         ClientSecretBasic clientSecretBasic = new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret));
         ssoConfig.setRedirectUri(new URI(redirectUri));
         ssoConfig.setClientSecretBasic(clientSecretBasic);
-        ListableObjectStore<TokenData> tokenStore = muleContext.getObjectStoreManager().getObjectStore("token-cookie-store");
+        ListableObjectStore<TokenData> tokenStore = muleContext.getObjectStoreManager()
+                .getObjectStore("token-cookie-store");
         Storage<TokenData> tokenStorage = new Storage<>(tokenStore);
-        ListableObjectStore<RedirectData> redirectStore = muleContext.getObjectStoreManager().getObjectStore("redirect-cookie-store");
+        ListableObjectStore<RedirectData> redirectStore = muleContext.getObjectStoreManager()
+                .getObjectStore("redirect-cookie-store");
         Storage<RedirectData> redirectStorage = new Storage<>(redirectStore);
         TokenRequester requester = new TokenRequester();
         TokenVerifier verifier = new TokenVerifier();
-        RelyingPartyHandler handler = new RelyingPartyHandler(muleMessage, requester, tokenStorage, redirectStorage, ssoConfig, verifier, instantRefresh);
+        RelyingPartyHandler handler = new RelyingPartyHandler(
+                muleMessage,
+                requester,
+                tokenStorage,
+                redirectStorage,
+                ssoConfig,
+                verifier,
+                instantRefresh
+        );
 
         try {
+            logger.debug("Handling request as relying party");
             client.actAsRelyingParty(handler);
 
             Set<String> outboundProps = muleMessage.getOutboundPropertyNames();
             if (outboundProps.contains(HTTP_STATUS) &&
                     (int)muleMessage.getOutboundProperty(HTTP_STATUS) == Response.Status.FOUND.getStatusCode()) {
+                logger.debug("Redirecting to identity provider");
                 return muleMessage.getPayload();
             } else {
+                logger.debug("Continue processing flow. Access granted");
                 return callback.processEvent(muleEvent).getMessage().getPayload();
             }
         } catch (Exception e) {
             changeResponseStatus(muleMessage, Response.Status.INTERNAL_SERVER_ERROR);
+            logger.debug("Error due acting as relying party. Exception: {}. Reason: {}", e.getCause(), e.getMessage());
             muleMessage.setPayload("An error occured: " + e.getMessage());
-            //return muleMessage.getPayload();
-            throw e;
+            return muleMessage.getPayload();
         }
     }
 
@@ -223,8 +267,12 @@ public class OIDCTokenValidatorConnector {
      * @param statusType HTTP status type which should be configured
      */
 	private void changeResponseStatus(MuleMessage message, Response.StatusType statusType) {
-		message.setOutboundProperty(HttpConstants.ResponseProperties.HTTP_STATUS_PROPERTY, statusType.getStatusCode());
-		message.setOutboundProperty(HttpConstants.ResponseProperties.HTTP_REASON_PROPERTY, statusType.getReasonPhrase());
+		message.setOutboundProperty(
+                HttpConstants.ResponseProperties.HTTP_STATUS_PROPERTY, statusType.getStatusCode()
+        );
+		message.setOutboundProperty(
+                HttpConstants.ResponseProperties.HTTP_REASON_PROPERTY, statusType.getReasonPhrase()
+        );
 	}
 
     public ConnectorConfig getConfig() {
