@@ -148,4 +148,21 @@ public class ConnectorConfig {
 	public void setJwkSetEndpoint(String jwkSetEndpoint) {
 		this.jwkSetEndpoint = jwkSetEndpoint;
 	}
+
+	/**
+	 * RSA Public Key. OPTIONAL: This is a optional parameter if OpenID Configuration discovery is active
+	 */
+	@Configurable
+	@Optional
+	@FriendlyName("RSA Public Key String")
+	@Placement(tab="Manual Configuration", group="Endpoints", order = 3)
+	private String publicKey;
+
+	public String getPublicKey() {
+		return publicKey;
+	}
+
+	public void setPublicKey(String publicKey) {
+		this.publicKey = publicKey;
+	}
 }

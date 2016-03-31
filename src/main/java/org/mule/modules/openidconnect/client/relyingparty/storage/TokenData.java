@@ -9,10 +9,12 @@ import java.io.Serializable;
 import java.util.UUID;
 
 /**
- * Created by moritz.moeller on 03.03.2016.
+ * Simple POJO to represent the token data saved in the Mule ObjectStore
+ *
+ * @author Moritz Möller, AOE GmbH
+ *
  */
-public class TokenData implements Serializable {
-    private String cookieId;
+public class TokenData extends StorageData {
     private JWT idToken;
     private AccessToken accessToken;
     private RefreshToken refreshToken;
@@ -21,7 +23,6 @@ public class TokenData implements Serializable {
         this.idToken = tokens.getIDToken();
         this.accessToken = tokens.getAccessToken();
         this.refreshToken = tokens.getRefreshToken();
-        this.cookieId = UUID.randomUUID().toString();
     }
 
     public TokenData(OIDCTokens tokens, String cookieId) {
@@ -53,7 +54,4 @@ public class TokenData implements Serializable {
         this.refreshToken = refreshToken;
     }
 
-    public String getCookieId() {
-        return cookieId;
-    }
 }

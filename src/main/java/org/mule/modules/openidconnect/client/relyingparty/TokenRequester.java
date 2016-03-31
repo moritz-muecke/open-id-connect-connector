@@ -20,6 +20,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URI;
 
+/**
+ * This class requests token sets from an OpenID provider. Initial token sets as well as refreshed token sets.
+ *
+ * @author Moritz Möller, AOE GmbH
+ *
+ */
 public class TokenRequester {
 
     private TokenRequestFactory tokenRequestFactory;
@@ -32,7 +38,14 @@ public class TokenRequester {
         this.parser = new NimbusParserUtil();
     }
 
-    public AuthenticationRequest buildRedirectRequest(SingleSignOnConfig ssoConfig) {
+    /**
+     * Builds an valid AuthenticationRequest object to redirect the user to the OpenID provider for authentication.
+     * Creates the state and nonce values specified by OpenID Connect by using the Nimbus OIDC OAuth2 SDK
+     *
+     * @param ssoConfig Config object with all necessary identity provider information
+     * @return AuthenticationRequest object
+     */
+    public AuthenticationRequest buildAuthenticationRequest(SingleSignOnConfig ssoConfig) {
         State state = new State();
         Nonce nonce = new Nonce();
         Scope scope = Scope.parse("openid");
@@ -44,6 +57,14 @@ public class TokenRequester {
                 scope, clientId, ssoConfig.getRedirectUri(), state, nonce);
     }
 
+    /**
+     * Takes a given Authorization code to request a token set from the OpenID provider
+     *
+     * @param authCode Authorization code to request the token set
+     * @param ssoConfig Config object with all necessary identity provider information
+     * @return The token set
+     * @throws RequestTokenFromSsoException if connection fails or request is invalid
+     */
     public TokenData requestTokensFromSso(String authCode, SingleSignOnConfig ssoConfig) throws
             RequestTokenFromSsoException {
         try {
@@ -71,6 +92,16 @@ public class TokenRequester {
         }
     }
 
+    /**
+     * Request a new token set by sending a request with a given refresh token to the OpenID provider
+     *
+     * @param tokenData Current token data
+     * @param ssoConfig Config object with all necessary identity provider information
+     * @return Refreshed token set
+     * @throws RequestTokenFromSsoException if request is invalid
+     * @throws IOException if connection fails
+     * @throws ParseException if tokens can't be parsed
+     */
     public TokenData refreshTokenSet(TokenData tokenData, SingleSignOnConfig ssoConfig) throws
             RequestTokenFromSsoException, IOException, ParseException {
         RefreshToken refreshToken = tokenData.getRefreshToken();

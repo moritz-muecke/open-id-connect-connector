@@ -1,11 +1,16 @@
 package org.mule.modules.openidconnect.config;
 
-import java.net.URI;
-
-
-import java.security.interfaces.RSAPublicKey;
-import java.util.ArrayList;
-import java.util.List;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.oauth2.sdk.ParseException;
+import com.nimbusds.oauth2.sdk.id.Issuer;
+import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;
+import com.nimbusds.openid.connect.sdk.SubjectType;
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
+import net.minidev.json.JSONArray;
+import net.minidev.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -14,19 +19,16 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
-
-import net.minidev.json.JSONArray;
-import net.minidev.json.JSONObject;
-
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.oauth2.sdk.ParseException;
-import com.nimbusds.oauth2.sdk.id.Issuer;
-import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;
-import com.nimbusds.openid.connect.sdk.SubjectType;
-import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
 
 /**
  * This class is responsible to build and provide meta data of an OpenID Connect
@@ -97,7 +99,8 @@ public class MetaDataBuilder {
      * @throws JOSEException
      * @throws java.text.ParseException
      */
-	public RSAPublicKey providePublicKey(OIDCProviderMetadata providerMetadata) throws ParseException, JOSEException, java.text.ParseException {
+	public RSAPublicKey providePublicKeyFromJwkSet(OIDCProviderMetadata providerMetadata) throws
+            ParseException, JOSEException, java.text.ParseException {
 		URI jwkSetUri = providerMetadata.getJWKSetURI();
         logger.debug("Sending HTTP request to retrieve JWK set from identity provider");
         String metaDataResponse = requestJsonString(jwkSetUri);
@@ -113,6 +116,24 @@ public class MetaDataBuilder {
         }
         return publicKey;
 	}
+
+    /**
+     * Provides a RSAPublicKey from a given string
+     *
+     * @param keyString Public key string
+     * @return the RSAPublicKey from key string
+     * @throws NoSuchAlgorithmException
+     * @throws InvalidKeySpecException
+     * @throws UnsupportedEncodingException
+     */
+    public RSAPublicKey providePublicKeyFromString(String keyString) throws
+            NoSuchAlgorithmException, InvalidKeySpecException, UnsupportedEncodingException {
+        byte[] keyBytes = Base64.getDecoder().decode(keyString.getBytes("utf-8"));
+        X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return (RSAPublicKey)keyFactory.generatePublic(spec);
+    }
+
 
     /**
      * Helper method to extend and build URIs

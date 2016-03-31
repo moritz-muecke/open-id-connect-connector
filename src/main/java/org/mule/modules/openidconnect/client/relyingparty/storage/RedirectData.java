@@ -7,11 +7,13 @@ import java.io.Serializable;
 import java.util.UUID;
 
 /**
- * Created by moritz.moeller on 01.03.2016.
+ * Simple POJO to represent the redirect data saved in the Mule ObjectStore
+ *
+ * @author Moritz Möller, AOE GmbH
+ *
  */
-public class RedirectData implements Serializable {
+public class RedirectData extends StorageData {
 
-    private String cookieId;
     private Nonce nonce;
     private State state;
     private String jsonTokens;
@@ -19,7 +21,6 @@ public class RedirectData implements Serializable {
     public RedirectData(Nonce nonce, State state) {
         this.nonce = nonce;
         this.state = state;
-        this.cookieId = UUID.randomUUID().toString();
     }
 
     public Nonce getNonce() {
@@ -36,10 +37,6 @@ public class RedirectData implements Serializable {
 
     public void setJsonTokens(String jsonTokens) {
         this.jsonTokens = jsonTokens;
-    }
-
-    public String getCookieId() {
-        return cookieId;
     }
 
 }

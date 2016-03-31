@@ -101,7 +101,6 @@ public class OpenIDConnectConnector {
      * @param clientSecret The Secret of the given Client-ID
      * @param claimExtraction Creates the FlowVar tokenClaims which contains a map with all claims of the given token
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
-     * @throws HTTPConnectException if the identity provider is not available
      */
     @Processor(intercepting = true)
     public Object onlineTokenValidation(
@@ -115,6 +114,7 @@ public class OpenIDConnectConnector {
         ssoConfig.setIntrospectionUri(UriBuilder.fromUri(ssoConfig.getSsoUri()).path(introspectionEndpoint).build());
         ssoConfig.setClientSecretBasic(new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret)));
         try {
+            if (!ssoConfig.isInitialized()) ssoConfig.buildProviderMetadata();
             String authHeader = muleMessage.getInboundProperty(HttpHeaders.AUTHORIZATION);
     		logger.debug("Starting token introspection via identity provider");
             Map<String, Object> claims = client.ssoTokenValidation(authHeader);
@@ -132,13 +132,13 @@ public class OpenIDConnectConnector {
             );
             muleMessage.setPayload(e.getMessage());
 			return muleMessage.getPayload();
-		} catch (HTTPConnectException e) {
-            logger.debug("Could not connect to Identity Provider. Reason: {}. Interrupting flow now", e.getMessage());
-            changeResponseStatus(muleMessage, Response.Status.SERVICE_UNAVAILABLE);
-            muleMessage.setPayload(e.getMessage());
-			throw e;
-		} catch (Exception e) {
-            logger.debug("Error during token introspection. Reason: {}. Interrupting flow now", e.getMessage());
+		} catch (HTTPConnectException | MetaDataInitializationException e) {
+            logger.error("Identity provider error. Reason: {}", e.getMessage());
+            changeResponseStatus(muleMessage, Response.Status.BAD_GATEWAY);
+            muleMessage.setPayload("Could not connect to Identity Provider to validate token");
+            return muleMessage.getPayload();
+        } catch (Exception e) {
+            logger.error("Error during token introspection. Reason: {}. Interrupting flow now", e.getMessage());
             changeResponseStatus(muleMessage, Response.Status.BAD_REQUEST);
             muleMessage.setPayload(e.getMessage());
 			return muleMessage.getPayload();
@@ -182,12 +182,12 @@ public class OpenIDConnectConnector {
             muleMessage.setPayload(e.getMessage());
             return muleMessage.getPayload();
         } catch (MetaDataInitializationException e) {
-            changeResponseStatus(muleMessage, Response.Status.SERVICE_UNAVAILABLE);
+            changeResponseStatus(muleMessage, Response.Status.BAD_GATEWAY);
             muleMessage.setPayload(e.getMessage());
             logger.error(e.getMessage());
             return muleMessage.getPayload();
         } catch (Exception e) {
-            logger.debug("Error during token introspection. Reason: {}. Interrupting flow now", e.getMessage());
+            logger.error("Error during token validation. Reason: {}. Interrupting flow now", e.getMessage());
             changeResponseStatus(muleMessage, Response.Status.BAD_REQUEST);
             muleMessage.setPayload(e.getMessage());
             return muleMessage.getPayload();

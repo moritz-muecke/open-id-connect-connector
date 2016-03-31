@@ -47,9 +47,9 @@ class TokenRequesterSpec extends Specification {
         metaData.authorizationEndpointURI >> new URI("http://localhost:8080/auth")
 
         expect:
-        tokenRequester.buildRedirectRequest(ssoConfig).clientID.value == "client"
-        tokenRequester.buildRedirectRequest(ssoConfig).redirectionURI.toString() == "http://localhost:8081"
-        tokenRequester.buildRedirectRequest(ssoConfig).toURI().toString().startsWith("http://localhost:8080/auth?response_type=code&client_id=client&redirect_uri=http%3A%2F%2Flocalhost%3A8081&scope=openid")
+        tokenRequester.buildAuthenticationRequest(ssoConfig).clientID.value == "client"
+        tokenRequester.buildAuthenticationRequest(ssoConfig).redirectionURI.toString() == "http://localhost:8081"
+        tokenRequester.buildAuthenticationRequest(ssoConfig).toURI().toString().startsWith("http://localhost:8080/auth?response_type=code&client_id=client&redirect_uri=http%3A%2F%2Flocalhost%3A8081&scope=openid")
     }
 
     def "request tokens from sso"() {

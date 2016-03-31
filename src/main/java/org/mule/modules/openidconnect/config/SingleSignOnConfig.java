@@ -1,10 +1,5 @@
 package org.mule.modules.openidconnect.config;
 
-import java.net.URI;
-import java.security.interfaces.RSAPublicKey;
-
-import javax.ws.rs.core.UriBuilder;
-
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.oauth2.sdk.ParseException;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
@@ -12,6 +7,10 @@ import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import org.mule.modules.openidconnect.exception.MetaDataInitializationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.ws.rs.core.UriBuilder;
+import java.net.URI;
+import java.security.interfaces.RSAPublicKey;
 
 /**
  * This config extends the ConnectorConfig with several fields and parameters which
@@ -64,12 +63,14 @@ public class SingleSignOnConfig {
 		try {
             if(config.isConfigDiscovery()) {
                 providerMetadata = metaDataBuilder.provideMetadataFromServer(config.getConfigDiscoveryEndpoint());
+				rsaPublicKey = metaDataBuilder.providePublicKeyFromJwkSet(providerMetadata);
             } else {
 				providerMetadata = metaDataBuilder.provideMetadataManually(
 						config.getAuthEndpoint(), config.getTokenEndpoint(), config.getJwkSetEndpoint()
 				);
+				rsaPublicKey = metaDataBuilder.providePublicKeyFromString(config.getPublicKey());
 			}
-            rsaPublicKey = metaDataBuilder.providePublicKey(providerMetadata);
+
             isInitialized = true;
         } catch (Exception e) {
 			logger.debug("Error occurred while building identity provider meta data. Exception: {}, Message: {}",

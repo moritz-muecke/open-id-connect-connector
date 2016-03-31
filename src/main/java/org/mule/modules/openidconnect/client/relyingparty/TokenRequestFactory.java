@@ -3,10 +3,14 @@ package org.mule.modules.openidconnect.client.relyingparty;
 import com.nimbusds.oauth2.sdk.AuthorizationGrant;
 import com.nimbusds.oauth2.sdk.TokenRequest;
 import com.nimbusds.oauth2.sdk.auth.ClientAuthentication;
+
 import java.net.URI;
 
 /**
- * Created by moritz.moeller on 07.03.2016.
+ * Factory to build TokenRequest objects of the Nimbus OIDC OAuth2 SDK.
+ *
+ * @author Moritz Möller, AOE GmbH
+ *
  */
 public class TokenRequestFactory {
     public TokenRequest getTokenRequest(

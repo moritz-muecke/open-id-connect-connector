@@ -1,6 +1,10 @@
 package org.mule.modules.openidconnect.client.tokenvalidation;
+
+import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.JWTClaimsVerifier;
 import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.openid.connect.sdk.Nonce;
@@ -9,16 +13,18 @@ import com.nimbusds.openid.connect.sdk.validators.IDTokenClaimsVerifier;
 import org.mule.modules.openidconnect.client.NimbusParserUtil;
 import org.mule.modules.openidconnect.config.SingleSignOnConfig;
 import org.mule.modules.openidconnect.exception.TokenValidationException;
-
-import com.nimbusds.jose.JWSVerifier;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
 
+/**
+ * Provides methods to verify OpenID Connect Access-, Refresh- and ID-Tokens.
+ *
+ * @author Moritz Möller, AOE GmbH
+ *
+ */
 public class TokenVerifier {
 
 	private static final Logger logger = LoggerFactory.getLogger(TokenVerifier.class);
@@ -29,6 +35,16 @@ public class TokenVerifier {
 		this.parser = new NimbusParserUtil();
 	}
 
+    /**
+     * Verifies that a given AccessToken is valid by comparing the issuer with the origin, checking if its active and
+     * verifying the token signature with a given public key
+     *
+     * @param accessToken AccessToken which has to be verified
+     * @param publicKey The public key to verify the signature of the token
+     * @param origin The origin which provided the token
+     * @return The claims set of the given token
+     * @throws TokenValidationException if verifying fails
+     */
 	public JWTClaimsSet verifyAccessToken(AccessToken accessToken, RSAPublicKey publicKey, String origin) throws
 			TokenValidationException {
 		try {
@@ -51,6 +67,15 @@ public class TokenVerifier {
 		}
 	}
 
+    /**
+     * Verifies a given IDToken by using the token verifier from the Nimbus SDK. Also verifying the token signature
+     * with the public key. Follows the defined guideline of the OpenID Connect specification
+     *
+     * @param idToken IDToken which has to be verified
+     * @param ssoConfig Config object with all necessary identity provider information
+     * @param nonce Nonce from the initial authentication redirect
+     * @throws TokenValidationException if verifying fails
+     */
 	public void verifyIdToken(JWT idToken, SingleSignOnConfig ssoConfig, Nonce nonce) throws TokenValidationException {
 		try {
 			OIDCProviderMetadata metaData = ssoConfig.getProviderMetadata();
@@ -76,6 +101,14 @@ public class TokenVerifier {
 
 	}
 
+    /**
+     * Compares a refreshed ID-Token with the current one. Follows the defined guideline of the OpenID Connect
+     * specification
+     *
+     * @param currentIdToken Current ID-Token
+     * @param newIdToken Refreshed ID-Token obtained from the identity provider
+     * @throws TokenValidationException if verifying fails
+     */
 	public void verifyRefreshedIdToken(JWT currentIdToken, JWT newIdToken) throws TokenValidationException {
         try {
             JWTClaimsSet currentClaims = currentIdToken.getJWTClaimsSet();
@@ -99,6 +132,13 @@ public class TokenVerifier {
         }
     }
 
+    /**
+     * Helper method to check if a given AccessToken is active
+     *
+     * @param accessToken AccessToken to be checked
+     * @return True if active, false if not
+     * @throws ParseException if token can't be parsed
+     */
 	public boolean isActive(AccessToken accessToken) throws ParseException {
         JWTClaimsSet claimsSet = parser.parseJWT(accessToken.getValue()).getJWTClaimsSet();
 		long expTime = claimsSet.getExpirationTime().getTime();

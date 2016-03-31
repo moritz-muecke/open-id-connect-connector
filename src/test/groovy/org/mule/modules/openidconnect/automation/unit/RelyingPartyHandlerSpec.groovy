@@ -55,7 +55,7 @@ class RelyingPartyHandlerSpec extends Specification {
         tokenStorage.containsData(_) >> true
 
         expect:
-        relyingPartyHandler.hasTokenCookieAndIsStored()
+        relyingPartyHandler.hasCookieAndExistsInStore()
     }
 
     def "token cookie from mule message does not exist in storage"() {
@@ -63,7 +63,7 @@ class RelyingPartyHandlerSpec extends Specification {
         tokenStorage.containsData(_) >> false
 
         expect:
-        !relyingPartyHandler.hasTokenCookieAndIsStored()
+        !relyingPartyHandler.hasCookieAndExistsInStore()
     }
 
     def "redirect cookie from mule message exists in storage"() {
@@ -217,10 +217,10 @@ class RelyingPartyHandlerSpec extends Specification {
         relyingPartyHandler.handleRedirect()
 
         then:
-        1 * tokenRequester.buildRedirectRequest(ssoConfig) >> authRequest
+        1 * tokenRequester.buildAuthenticationRequest(ssoConfig) >> authRequest
         1 * authRequest.nonce >> new Nonce("nonce")
         1 * authRequest.state >> new State("state")
-        1 * relyingPartyHandler.storeAndSetRedirectCookie(_) >> null
+        1 * relyingPartyHandler.storeAndSetCookie(_) >> null
         1 * authRequest.toURI() >> uri
         1 * relyingPartyHandler.redirectToUri(uri) >> null
     }
@@ -260,7 +260,7 @@ class RelyingPartyHandlerSpec extends Specification {
         def redirectData = Mock(RedirectData)
 
         when:
-        relyingPartyHandler.storeAndSetRedirectCookie(redirectData)
+        relyingPartyHandler.storeAndSetCookie(redirectData)
 
         then:
         2 * redirectData.cookieId >> "cookieId"

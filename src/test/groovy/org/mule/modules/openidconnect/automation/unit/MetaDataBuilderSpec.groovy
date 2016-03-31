@@ -22,7 +22,7 @@ class MetaDataBuilderSpec extends Specification {
         metaDataBuilder.requestJsonString(_) >> new File(this.getClass().getResource('testkey.json').file).text
 
         expect:
-        metaDataBuilder.providePublicKey(metaData) != null
-        metaDataBuilder.providePublicKey(metaData).algorithm == "RSA"
+        metaDataBuilder.providePublicKeyFromJwkSet(metaData) != null
+        metaDataBuilder.providePublicKeyFromJwkSet(metaData).algorithm == "RSA"
     }
 }

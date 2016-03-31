@@ -9,6 +9,7 @@ import org.mule.module.http.api.HttpConstants;
 import org.mule.module.http.api.HttpHeaders;
 import org.mule.modules.openidconnect.client.relyingparty.storage.RedirectData;
 import org.mule.modules.openidconnect.client.relyingparty.storage.Storage;
+import org.mule.modules.openidconnect.client.relyingparty.storage.StorageData;
 import org.mule.modules.openidconnect.client.relyingparty.storage.TokenData;
 import org.mule.modules.openidconnect.client.tokenvalidation.TokenVerifier;
 import org.mule.modules.openidconnect.config.SingleSignOnConfig;
@@ -23,7 +24,11 @@ import java.util.Arrays;
 import java.util.Map;
 
 /**
- * Created by moritz.moeller on 01.03.2016.
+ * This class provides all the logic needed by the connector to act as a OpenID Connect relying party. Handles the
+ * redirects as well as the refreshing, requesting and storing of the token data. Sets Cookies at consumer side.
+ *
+ * @author Moritz Möller, AOE GmbH
+ *
  */
 public class RelyingPartyHandler {
 
@@ -57,16 +62,29 @@ public class RelyingPartyHandler {
         this.instantRefresh = instantRefresh;
     }
 
-    public boolean hasTokenCookieAndIsStored() throws ObjectStoreException {
+    /**
+     * Checks if a cookie with given name is in the current request and if this cookie is stored in the Mule ObjectStore
+     * @return True if it is stored, false if not
+     * @throws ObjectStoreException if there is a problem reading data from Mule ObjectStore
+     */
+    public boolean hasCookieAndExistsInStore(String cookieName) throws ObjectStoreException {
         String cookieHeader = muleMessage.getInboundProperty("cookie");
-        return tokenStorage.containsData(cookieExtractor(cookieHeader, TOKEN_COOKIE_NAME));
+        System.out.println(cookieExtractor(cookieHeader, cookieName));
+        if (cookieName.equals(TOKEN_COOKIE_NAME)){
+            return tokenStorage.containsData(cookieExtractor(cookieHeader, cookieName));
+        } else {
+            return redirectDataStorage.containsData(cookieExtractor(cookieHeader, cookieName));
+        }
     }
 
-    public boolean hasRedirectCookieAndIsStored() throws ObjectStoreException {
-        String cookieHeader = muleMessage.getInboundProperty("cookie");
-        return redirectDataStorage.containsData(cookieExtractor(cookieHeader, REDIRECT_COOKIE_NAME));
-    }
-
+    /**
+     * Handles the resource request if tokens are available and active. If not active the method try's to refresh
+     * them
+     *
+     * @throws ObjectStoreException If refreshed tokens can't be stored
+     * @throws ParseException If tokens can't be parsed
+     * @throws java.text.ParseException
+     */
     public void handleResourceRequest() throws ObjectStoreException, ParseException, java.text.ParseException {
         String cookieHeader = muleMessage.getInboundProperty("cookie");
         String tokenStorageEntryId = cookieExtractor(cookieHeader, TOKEN_COOKIE_NAME);
@@ -75,7 +93,7 @@ public class RelyingPartyHandler {
             try {
                 logger.debug("Refreshing tokens from Identity-Provider");
                 tokenData = refreshTokens(tokenData);
-                storeAndSetTokenCookie(tokenData);
+                storeAndSetCookie(tokenData, tokenStorage, TOKEN_COOKIE_NAME);
             } catch (IOException | TokenValidationException | RequestTokenFromSsoException e) {
                 logger.debug("Could not refresh tokens from identity provider. Redirecting to Identity-Provider");
                 handleRedirect();
@@ -87,6 +105,16 @@ public class RelyingPartyHandler {
         );
     }
 
+    /**
+     * Calls the TokenVerifier to refresh a given token set
+     *
+     * @param tokenData Token set which has to be refreshed
+     * @return Refreshed token set
+     * @throws TokenValidationException If validation of the refreshed tokens fails
+     * @throws ParseException If parsing of the refreshed tokens fails
+     * @throws RequestTokenFromSsoException If token refreshing via the OpenID Provider fails
+     * @throws IOException If connecting to the OpenID Provider fails
+     */
     public TokenData refreshTokens(TokenData tokenData) throws
             TokenValidationException, ParseException, RequestTokenFromSsoException, IOException {
         TokenData refreshedTokenData = tokenRequester.refreshTokenSet(tokenData, ssoConfig);
@@ -94,6 +122,13 @@ public class RelyingPartyHandler {
         return refreshedTokenData;
     }
 
+    /**
+     * Handles requests of consumers which were redirected back to the connector by the OpenID Provider with an
+     * authorization code. The Code is included in the query parameters of the current request. Calls the TokenVerifier
+     * to request the tokens with the authorization code.
+     *
+     * @throws ObjectStoreException If the requested tokens can't be stored in Mule ObjectStore
+     */
     public void handleTokenRequest() throws ObjectStoreException {
         String cookieHeader = muleMessage.getInboundProperty("cookie");
         String redirectEntryId = cookieExtractor(cookieHeader, REDIRECT_COOKIE_NAME);
@@ -108,7 +143,7 @@ public class RelyingPartyHandler {
             try {
                 TokenData tokenData = tokenRequester.requestTokensFromSso(authCode, ssoConfig);
                 verifier.verifyIdToken(tokenData.getIdToken(), ssoConfig, redirectData.getNonce());
-                storeAndSetTokenCookie(tokenData);
+                storeAndSetCookie(tokenData, tokenStorage, TOKEN_COOKIE_NAME);
                 logger.debug("Redirecting to origin to clear uri");
                 redirectToUri(ssoConfig.getRedirectUri());
             } catch (RequestTokenFromSsoException | TokenValidationException e) {
@@ -118,40 +153,30 @@ public class RelyingPartyHandler {
         }
     }
 
+    /**
+     * If neither a redirect cookie nor a token cookie is available in the current request, the consumer is
+     * redirected to the identity provider. Generates and stores redirect data
+     *
+     * @throws ObjectStoreException if redirect data can't be stored in Mule ObjectStore
+     */
     public void handleRedirect() throws ObjectStoreException {
-        AuthenticationRequest authRequest = tokenRequester.buildRedirectRequest(ssoConfig);
+        AuthenticationRequest authRequest = tokenRequester.buildAuthenticationRequest(ssoConfig);
         RedirectData redirectData = new RedirectData(authRequest.getNonce(), authRequest.getState());
-        storeAndSetRedirectCookie(redirectData);
+        storeAndSetCookie(redirectData, redirectDataStorage, REDIRECT_COOKIE_NAME);
         redirectToUri(authRequest.toURI());
     }
 
-    public void storeAndSetRedirectCookie(RedirectData redirectData) throws ObjectStoreException {
-        logger.debug("Storing redirect data and setting the cookie");
+    public void storeAndSetCookie(StorageData storageData, Storage storage, String cookieName) throws
+            ObjectStoreException {
+        logger.debug("Storing data and setting the cookie");
         String cookieHeader = muleMessage.getInboundProperty("cookie");
-        String tokenStorageEntryId = cookieExtractor(cookieHeader, TOKEN_COOKIE_NAME);
-        if (tokenStorageEntryId != null) tokenStorage.removeData(tokenStorageEntryId);
-        redirectDataStorage.storeData(redirectData.getCookieId(), redirectData);
+        String storageId = cookieExtractor(cookieHeader, cookieName);
+        if (storageId != null) storage.removeData(storageId);
+        storage.storeData(storageData.getCookieId(), storageData);
         Cookie cookie = new Cookie(
                 ssoConfig.getRedirectUri().toString(),
-                REDIRECT_COOKIE_NAME,
-                redirectData.getCookieId(),
-                null,
-                null,
-                true
-        );
-        muleMessage.setOutboundProperty(HttpHeaders.Names.SET_COOKIE, cookie);
-    }
-
-    public void storeAndSetTokenCookie(TokenData tokenData) throws ObjectStoreException {
-        logger.debug("Storing token data and setting the cookie");
-        String cookieHeader = muleMessage.getInboundProperty("cookie");
-        String redirectStorageEntryId = cookieExtractor(cookieHeader, REDIRECT_COOKIE_NAME);
-        if (redirectStorageEntryId != null) redirectDataStorage.removeData(redirectStorageEntryId);
-        tokenStorage.storeData(tokenData.getCookieId(), tokenData);
-        Cookie cookie = new Cookie(
-                ssoConfig.getRedirectUri().toString(),
-                TOKEN_COOKIE_NAME,
-                tokenData.getCookieId(),
+                cookieName,
+                storageData.getCookieId(),
                 null,
                 null,
                 true
