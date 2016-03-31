@@ -3,10 +3,10 @@
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.mule.modules</groupId>
-    <artifactId>oidc-token-validator</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <artifactId>openidconnect-connector</artifactId>
+    <version>1.0</version>
     <packaging>mule-module</packaging>
-    <name>OpenID Connect Token Validator Anypoint Connector</name>
+    <name>OpenID Connect Module</name>
     
     <parent>
         <groupId>org.mule.tools.devkit</groupId>

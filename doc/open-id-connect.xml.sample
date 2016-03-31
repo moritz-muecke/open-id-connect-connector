@@ -1,0 +1,11 @@
+<!-- BEGIN_INCLUDE(open-id-connect:local-token-validation) -->
+	<open-id-connect:local-token-validation claimExtraction="false"/>
+<!-- END_INCLUDE(open-id-connect:local-token-validation) -->
+
+<!-- BEGIN_INCLUDE(open-id-connect:online-token-validation) -->
+	<open-id-connect:online-token-validation introspectionEndpoint="" clientId="" clientSecret="" claimExtraction="false"/>
+<!-- END_INCLUDE(open-id-connect:online-token-validation) -->
+
+<!-- BEGIN_INCLUDE(open-id-connect:act-as-relying-party) -->
+	<open-id-connect:act-as-relying-party redirectUri="" clientId="" clientSecret="" instantRefresh="false"/>
+<!-- END_INCLUDE(open-id-connect:act-as-relying-party) -->

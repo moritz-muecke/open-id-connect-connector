@@ -1,1 +1,1 @@
-# OpenID Connect Token Validator Anypoint Connector
+# OpenID Connect Module for Mule
