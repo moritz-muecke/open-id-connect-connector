@@ -32,8 +32,8 @@ import java.util.Map;
  */
 public class RelyingPartyHandler {
 
-    public static final String TOKEN_COOKIE_NAME = "ESB-OIDC-SID";
-    public static final String REDIRECT_COOKIE_NAME = "ESB-OIDC-RID";
+    public static final String TOKEN_COOKIE_NAME = "ESB-OIDC-TDID";
+    public static final String REDIRECT_COOKIE_NAME = "ESB-OIDC-RDID";
     private TokenRequester tokenRequester;
     private Storage<TokenData> tokenStorage;
     private Storage<RedirectData> redirectDataStorage;
@@ -167,7 +167,8 @@ public class RelyingPartyHandler {
 
     /**
      * Stores given data in given storage. If old data exists in storage they are removed first. After storing data a
-     * cookie with given name is generated and attached to the current MuleMessage.
+     * cookie with given name is generated and attached to the current MuleMessage. The cookie is readable for http
+     * only and not for scripts.
      *
      * @param storageData Data to be stored
      * @param storage Storage where the data should stored in
@@ -181,15 +182,8 @@ public class RelyingPartyHandler {
         String storageId = cookieExtractor(cookieHeader, cookieName);
         if (storageId != null) storage.removeData(storageId);
         storage.storeData(storageData.getCookieId(), storageData);
-        Cookie cookie = new Cookie(
-                ssoConfig.getRedirectUri().toString(),
-                cookieName,
-                storageData.getCookieId(),
-                null,
-                null,
-                true
-        );
-        muleMessage.setOutboundProperty(HttpHeaders.Names.SET_COOKIE, cookie);
+        Cookie cookie = new Cookie(ssoConfig.getRedirectUri().toString(), cookieName, storageData.getCookieId());
+        muleMessage.setOutboundProperty(HttpHeaders.Names.SET_COOKIE, cookie + "; HttpOnly");
     }
 
     /**

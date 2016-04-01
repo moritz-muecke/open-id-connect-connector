@@ -91,8 +91,7 @@ public class OpenIDConnectConnector {
      * the given bearer token from the request header. Intercepts the flow if token isn't valid, otherwise it continues
      * processing. If claim extraction is activated, set of id-token claims is added to the flow variables.
      * 
-     * {@sample.xml ../../../doc/open-id-connect.xml.sample
-	 * oidc-token-validator:online-token-validation}
+     * {@sample.xml ../../../doc/open-id-connect.xml.sample open-id-connect:online-token-validation}
      * 
      * @param callback injected by devkit
      * @param muleEvent injected by devkit
@@ -150,8 +149,7 @@ public class OpenIDConnectConnector {
      * Uses a internal class to validate the token. Intercepts the flow if token isn't valid, otherwise it continues
      * processing. If claim extraction is activated, set of id-token claims is added to the flow variables.
      * 
-     * {@sample.xml ../../../doc/open-id-connect.xml.sample
-	 * oidc-token-validator:local-token-validation}
+     * {@sample.xml ../../../doc/open-id-connect.xml.sample open-id-connect:local-token-validation}
      * 
      * @param callback injected by devkit
      * @param muleEvent injected by devkit
@@ -200,8 +198,7 @@ public class OpenIDConnectConnector {
      * active session. Otherwise it enhances the request with the Authorization header and continues processing of the
      * current flow.
      *
-     * {@sample.xml ../../../doc/open-id-connect.xml.sample
-	 * oidc-token-validator:act-as-relying-party}
+     * {@sample.xml ../../../doc/open-id-connect.xml.sample open-id-connect:act-as-relying-party}
      *
      * @param callback injected by devkit
      * @param muleEvent injected by devkit
