@@ -227,6 +227,7 @@ public class OpenIDConnectConnector {
         RelyingPartyHandler handler = initializeRelyingParty(muleMessage, instantRefresh);
 
         try {
+            if (!ssoConfig.isInitialized()) ssoConfig.buildProviderMetadata();
             logger.debug("Handling request as relying party");
             client.actAsRelyingParty(handler);
 
@@ -238,6 +239,11 @@ public class OpenIDConnectConnector {
                 logger.debug("Continue processing flow. Access granted");
                 return callback.processEvent(muleEvent).getMessage().getPayload();
             }
+        } catch (MetaDataInitializationException e) {
+            changeResponseStatus(muleMessage, Response.Status.BAD_GATEWAY);
+            muleMessage.setPayload("Could not connect to OpenID provider");
+            logger.error(e.getMessage());
+            return muleMessage.getPayload();
         } catch (Exception e) {
             changeResponseStatus(muleMessage, Response.Status.INTERNAL_SERVER_ERROR);
             logger.debug("Error while acting as relying party. Exception: {}. Reason: {}", e.getCause(), e.getMessage());

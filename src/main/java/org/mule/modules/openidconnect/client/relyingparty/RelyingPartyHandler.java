@@ -69,7 +69,6 @@ public class RelyingPartyHandler {
      */
     public boolean hasCookieAndExistsInStore(String cookieName) throws ObjectStoreException {
         String cookieHeader = muleMessage.getInboundProperty("cookie");
-        System.out.println(cookieExtractor(cookieHeader, cookieName));
         if (cookieName.equals(TOKEN_COOKIE_NAME)){
             return tokenStorage.containsData(cookieExtractor(cookieHeader, cookieName));
         } else {
@@ -166,6 +165,15 @@ public class RelyingPartyHandler {
         redirectToUri(authRequest.toURI());
     }
 
+    /**
+     * Stores given data in given storage. If old data exists in storage they are removed first. After storing data a
+     * cookie with given name is generated and attached to the current MuleMessage.
+     *
+     * @param storageData Data to be stored
+     * @param storage Storage where the data should stored in
+     * @param cookieName Name of the cookie
+     * @throws ObjectStoreException If an error occurs while accessing the storage
+     */
     public void storeAndSetCookie(StorageData storageData, Storage storage, String cookieName) throws
             ObjectStoreException {
         logger.debug("Storing data and setting the cookie");
@@ -184,6 +192,12 @@ public class RelyingPartyHandler {
         muleMessage.setOutboundProperty(HttpHeaders.Names.SET_COOKIE, cookie);
     }
 
+    /**
+     * Sets the http status of the current MuleMessage to 302 and the location header to a given uri to redirect the
+     * current request to this uri
+     *
+     * @param redirectUri Uri where the requests is redirected to
+     */
     public void redirectToUri(URI redirectUri) {
         muleMessage.setOutboundProperty(
                 HttpConstants.ResponseProperties.HTTP_STATUS_PROPERTY,
@@ -196,6 +210,13 @@ public class RelyingPartyHandler {
         muleMessage.setOutboundProperty(HttpHeaders.Names.LOCATION, redirectUri);
     }
 
+    /**
+     * Takes a string and extracts a value of a key value pair out of this string.
+     *
+     * @param header String to extract value from
+     * @param cookieName Name of the key the value should be extracted
+     * @return The value or null
+     */
     public String cookieExtractor(String header, String cookieName) {
         if (header != null){
             return Arrays.stream(header.split("; "))

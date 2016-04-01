@@ -69,9 +69,6 @@ public class OpenIdConnectClient {
      */
     public void actAsRelyingParty(RelyingPartyHandler relyingPartyHandler) throws
             ObjectStoreException, ParseException, java.text.ParseException {
-        System.out.println(relyingPartyHandler.hasCookieAndExistsInStore(RelyingPartyHandler.TOKEN_COOKIE_NAME));
-        System.out.println(relyingPartyHandler.hasCookieAndExistsInStore(RelyingPartyHandler.REDIRECT_COOKIE_NAME));
-
         if (relyingPartyHandler.hasCookieAndExistsInStore(RelyingPartyHandler.TOKEN_COOKIE_NAME)) {
             logger.debug("Token cookie found in request and store. Handling resource request");
             relyingPartyHandler.handleResourceRequest();

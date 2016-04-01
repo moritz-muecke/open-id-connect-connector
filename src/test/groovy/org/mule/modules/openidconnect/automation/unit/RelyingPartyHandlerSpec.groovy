@@ -55,7 +55,7 @@ class RelyingPartyHandlerSpec extends Specification {
         tokenStorage.containsData(_) >> true
 
         expect:
-        relyingPartyHandler.hasCookieAndExistsInStore()
+        relyingPartyHandler.hasCookieAndExistsInStore(RelyingPartyHandler.TOKEN_COOKIE_NAME)
     }
 
     def "token cookie from mule message does not exist in storage"() {
@@ -63,7 +63,7 @@ class RelyingPartyHandlerSpec extends Specification {
         tokenStorage.containsData(_) >> false
 
         expect:
-        !relyingPartyHandler.hasCookieAndExistsInStore()
+        !relyingPartyHandler.hasCookieAndExistsInStore(RelyingPartyHandler.TOKEN_COOKIE_NAME)
     }
 
     def "redirect cookie from mule message exists in storage"() {
@@ -71,7 +71,7 @@ class RelyingPartyHandlerSpec extends Specification {
         redirectDataStorage.containsData(_) >> true
 
         expect:
-        relyingPartyHandler.hasRedirectCookieAndIsStored()
+        relyingPartyHandler.hasCookieAndExistsInStore(RelyingPartyHandler.REDIRECT_COOKIE_NAME)
     }
 
     def "redirect cookie from mule message does not exist in storage"() {
@@ -79,7 +79,7 @@ class RelyingPartyHandlerSpec extends Specification {
         redirectDataStorage.containsData(_) >> false
 
         expect:
-        !relyingPartyHandler.hasRedirectCookieAndIsStored()
+        !relyingPartyHandler.hasCookieAndExistsInStore(RelyingPartyHandler.REDIRECT_COOKIE_NAME)
     }
 
     def "handle request with instant refresh"() {
@@ -98,7 +98,7 @@ class RelyingPartyHandlerSpec extends Specification {
         1 * tokenStorage.getData(tokenStorageId) >> tokenData
         1 * relyingPartyHandler.cookieExtractor(cookieHeader, RelyingPartyHandler.TOKEN_COOKIE_NAME) >> "tokenCookie"
         1 * relyingPartyHandler.refreshTokens(tokenData) >> tokenData
-        1 * relyingPartyHandler.storeAndSetTokenCookie(tokenData) >> null
+        1 * relyingPartyHandler.storeAndSetCookie(tokenData, tokenStorage, RelyingPartyHandler.TOKEN_COOKIE_NAME) >> null
         1 * muleMessage.setOutboundProperty("Authorization", "Bearer tokenString")
     }
 
@@ -117,7 +117,7 @@ class RelyingPartyHandlerSpec extends Specification {
         1 * tokenStorage.getData(tokenStorageId) >> tokenData
         1 * relyingPartyHandler.cookieExtractor(cookieHeader, RelyingPartyHandler.TOKEN_COOKIE_NAME) >> "tokenCookie"
         1 * relyingPartyHandler.refreshTokens(tokenData) >> tokenData
-        1 * relyingPartyHandler.storeAndSetTokenCookie(tokenData) >> null
+        1 * relyingPartyHandler.storeAndSetCookie(tokenData, tokenStorage, RelyingPartyHandler.TOKEN_COOKIE_NAME) >> null
         1 * muleMessage.setOutboundProperty("Authorization", "Bearer $accessToken.value")
     }
 
@@ -165,7 +165,7 @@ class RelyingPartyHandlerSpec extends Specification {
         1 * redirectData.state >> state
         1 * tokenRequester.requestTokensFromSso('queryCode', ssoConfig) >> tokenData
         1 * tokenVerifier.verifyIdToken(idtoken, ssoConfig, nonce)
-        1 * relyingPartyHandler.storeAndSetTokenCookie(_) >> null
+        1 * relyingPartyHandler.storeAndSetCookie(tokenData, tokenStorage, RelyingPartyHandler.TOKEN_COOKIE_NAME) >> null
     }
 
     def "handle token request with invalid state and auth code"() {
@@ -220,7 +220,7 @@ class RelyingPartyHandlerSpec extends Specification {
         1 * tokenRequester.buildAuthenticationRequest(ssoConfig) >> authRequest
         1 * authRequest.nonce >> new Nonce("nonce")
         1 * authRequest.state >> new State("state")
-        1 * relyingPartyHandler.storeAndSetCookie(_) >> null
+        1 * relyingPartyHandler.storeAndSetCookie(_, redirectDataStorage, RelyingPartyHandler.REDIRECT_COOKIE_NAME) >> null
         1 * authRequest.toURI() >> uri
         1 * relyingPartyHandler.redirectToUri(uri) >> null
     }
@@ -260,7 +260,7 @@ class RelyingPartyHandlerSpec extends Specification {
         def redirectData = Mock(RedirectData)
 
         when:
-        relyingPartyHandler.storeAndSetCookie(redirectData)
+        relyingPartyHandler.storeAndSetCookie(redirectData, redirectDataStorage, RelyingPartyHandler.REDIRECT_COOKIE_NAME)
 
         then:
         2 * redirectData.cookieId >> "cookieId"
@@ -274,7 +274,7 @@ class RelyingPartyHandlerSpec extends Specification {
         def tokenData = Mock(TokenData)
 
         when:
-        relyingPartyHandler.storeAndSetTokenCookie(tokenData)
+        relyingPartyHandler.storeAndSetCookie(tokenData, tokenStorage, relyingPartyHandler.TOKEN_COOKIE_NAME)
 
         then:
         2 * tokenData.cookieId >> "cookieId"

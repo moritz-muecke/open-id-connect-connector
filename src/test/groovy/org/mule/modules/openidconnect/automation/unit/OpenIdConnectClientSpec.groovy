@@ -26,9 +26,9 @@ class OpenIdConnectClientSpec extends Specification {
         client.actAsRelyingParty(handler)
 
         then:
-        1 * handler.hasCookieAndExistsInStore() >> true
+        1 * handler.hasCookieAndExistsInStore(RelyingPartyHandler.TOKEN_COOKIE_NAME) >> true
         1 * handler.handleResourceRequest()
-        0 * handler.hasRedirectCookieAndIsStored()
+        0 * handler.hasCookieAndExistsInStore(RelyingPartyHandler.REDIRECT_COOKIE_NAME)
         0 * handler.handleTokenRequest()
         0 * handler.handleRedirect()
     }
@@ -41,9 +41,9 @@ class OpenIdConnectClientSpec extends Specification {
         client.actAsRelyingParty(handler)
 
         then:
-        1 * handler.hasCookieAndExistsInStore() >> false
+        1 * handler.hasCookieAndExistsInStore(RelyingPartyHandler.TOKEN_COOKIE_NAME) >> false
         0 * handler.handleResourceRequest()
-        1 * handler.hasRedirectCookieAndIsStored() >> true
+        1 * handler.hasCookieAndExistsInStore(RelyingPartyHandler.REDIRECT_COOKIE_NAME) >> true
         1 * handler.handleTokenRequest()
         0 * handler.handleRedirect()
     }
@@ -56,9 +56,9 @@ class OpenIdConnectClientSpec extends Specification {
         client.actAsRelyingParty(handler)
 
         then:
-        1 * handler.hasCookieAndExistsInStore() >> false
+        1 * handler.hasCookieAndExistsInStore(RelyingPartyHandler.TOKEN_COOKIE_NAME) >> false
         0 * handler.handleResourceRequest()
-        1 * handler.hasRedirectCookieAndIsStored() >> false
+        1 * handler.hasCookieAndExistsInStore(RelyingPartyHandler.REDIRECT_COOKIE_NAME) >> false
         0 * handler.handleTokenRequest()
         1 * handler.handleRedirect()
     }

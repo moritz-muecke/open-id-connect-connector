@@ -4,9 +4,12 @@ import java.io.Serializable;
 import java.util.UUID;
 
 /**
- * Created by moritz.moeller on 31.03.2016.
+ * Abstract class for the different data types stored in the Mule ObjectStore
+ *
+ * @author Moritz Möller, AOE GmbH
+ *
  */
-public abstract class StorageData implements Serializable{
+public abstract class StorageData implements Serializable {
     String cookieId;
 
     StorageData() {
