@@ -55,7 +55,7 @@ import java.util.Set;
  * @author Moritz Möller, AOE GmbH
  *
  */
-@Connector(name="open-id-connect", friendlyName="OpenID Connect",minMuleVersion = "3.5", description = "OpenID Connect Module")
+@Connector(name="open-id-connect", friendlyName="OpenID Connect",minMuleVersion = "3.6.1", description = "OpenID Connect Module")
 public class OpenIDConnectConnector {
 
 	private OpenIdConnectClient client;
