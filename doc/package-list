@@ -1,0 +1,14 @@
+org.mule.modules.openidconnect
+org.mule.modules.openidconnect.client
+org.mule.modules.openidconnect.client.relyingparty
+org.mule.modules.openidconnect.client.relyingparty.storage
+org.mule.modules.openidconnect.client.tokenvalidation
+org.mule.modules.openidconnect.config
+org.mule.modules.openidconnect.exception
+org.mule.modules.openidconnect.generated.adapter
+org.mule.modules.openidconnect.generated.adapters
+org.mule.modules.openidconnect.generated.agents
+org.mule.modules.openidconnect.generated.config
+org.mule.modules.openidconnect.generated.devkit
+org.mule.modules.openidconnect.generated.processors
+org.mule.tooling.ui.contribution

@@ -95,6 +95,7 @@ public class RelyingPartyHandler {
                 storeAndSetCookie(tokenData, tokenStorage, TOKEN_COOKIE_NAME);
             } catch (IOException | TokenValidationException | RequestTokenFromSsoException e) {
                 logger.debug("Could not refresh tokens from identity provider. Redirecting to Identity-Provider");
+                tokenStorage.removeData(tokenStorageEntryId);
                 handleRedirect();
                 return;
             }
