@@ -80,7 +80,7 @@ public class TokenValidator {
                             ssoConfig.getSsoUri(), e.getMessage())
 			);
 		} catch (Exception e) {
-			logger.debug("Error during token introspection. Exception: {}, Message: {}", e.getCause(), e.getMessage());
+			logger.debug("Error during token introspection. Message: {}", e.getMessage());
             throw new TokenValidationException(e.getMessage());
 		}
 	}
@@ -101,8 +101,7 @@ public class TokenValidator {
 					accessToken, ssoConfig.getRsaPublicKey(), ssoConfig.getSsoUri().toString()
 			);
 		} catch (Exception e) {
-			logger.debug("Error during local token validation. Exception: {}, Message: {}",
-					e.getCause(), e.getMessage());
+			logger.debug("Error during local token validation. Message: {}", e.getMessage());
 			throw new TokenValidationException(e.getMessage());
 		}
 	}

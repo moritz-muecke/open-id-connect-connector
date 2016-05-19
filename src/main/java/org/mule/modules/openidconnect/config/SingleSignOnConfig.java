@@ -61,7 +61,7 @@ public class SingleSignOnConfig {
      */
 	public void buildProviderMetadata() throws MetaDataInitializationException {
 		try {
-            if(config.isConfigDiscovery()) {
+			if(config.isConfigDiscovery()) {
                 providerMetadata = metaDataBuilder.provideMetadataFromServer(config.getConfigDiscoveryEndpoint());
 				rsaPublicKey = metaDataBuilder.providePublicKeyFromJwkSet(providerMetadata);
             } else {

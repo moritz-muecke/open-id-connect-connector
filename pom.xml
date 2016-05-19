@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.mule.modules</groupId>
     <artifactId>openidconnect-connector</artifactId>
-    <version>1.0</version>
+    <version>1.2.0</version>
     <packaging>mule-module</packaging>
     <name>OpenID Connect Module</name>
     
@@ -67,18 +67,32 @@
             <layout>default</layout>
         </repository>
     </repositories>
+
+    <distributionManagement>
+        <repository>
+            <id>aoe-artifactory</id>
+            <name>AOE Artifactory</name>
+            <url>https://extranet.aoe.com/artifactory/libs-release-local/</url>
+        </repository>
+    </distributionManagement>
+
+
     <dependencies>
 	    <dependency>
 			<groupId>javax</groupId>
 			<artifactId>javaee-web-api</artifactId>
 			<version>7.0</version>
-			<scope>provided</scope>
 		</dependency>
 		<dependency>
 		    <groupId>com.nimbusds</groupId>
 		    <artifactId>oauth2-oidc-sdk</artifactId>
 		    <version>5.5.1</version>
 		</dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.core</groupId>
+            <artifactId>jersey-client</artifactId>
+            <version>2.22.2</version>
+        </dependency>
         <dependency>
             <groupId>org.spockframework</groupId>
             <artifactId>spock-core</artifactId>

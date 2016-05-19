@@ -61,8 +61,7 @@ public class TokenVerifier {
 			
 			return claimSet;
 		} catch (Exception e) {
-			logger.debug("Error during access token verification. Exception: {}, Message: {}",
-					e.getCause(), e.getMessage());
+			logger.debug("Error during access token verification. Message: {}", e.getMessage());
 			throw new TokenValidationException(e.getMessage());
 		}
 	}
@@ -94,8 +93,7 @@ public class TokenVerifier {
             } else throw new TokenValidationException("RSA public key is null");
 
 		} catch (Exception e) {
-			logger.debug("Error during id token verification. Exception: {}, Message: {}",
-					e.getCause(), e.getMessage());
+			logger.debug("Error during id token verification. Message: {}", e.getMessage());
 			throw new TokenValidationException(e.getMessage());
 		}
 
@@ -126,8 +124,7 @@ public class TokenVerifier {
                 throw new TokenValidationException("Refreshed ID token audience doesn't match current audience");
             }
         } catch (Exception e) {
-			logger.debug("Error during refresh token verification. Exception: {}, Message: {}",
-					e.getCause(), e.getMessage());
+			logger.debug("Error during refresh token verification. Message: {}", e.getMessage());
             throw new TokenValidationException(e.getMessage());
         }
     }

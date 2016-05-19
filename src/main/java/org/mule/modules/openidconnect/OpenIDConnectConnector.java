@@ -11,6 +11,7 @@ import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.Processor;
 import org.mule.api.annotations.display.FriendlyName;
 import org.mule.api.annotations.display.Password;
+import org.mule.api.annotations.lifecycle.OnException;
 import org.mule.api.annotations.lifecycle.Start;
 import org.mule.api.annotations.param.Default;
 import org.mule.api.callback.SourceCallback;
@@ -27,14 +28,13 @@ import org.mule.modules.openidconnect.client.tokenvalidation.TokenValidator;
 import org.mule.modules.openidconnect.client.tokenvalidation.TokenVerifier;
 import org.mule.modules.openidconnect.config.ConnectorConfig;
 import org.mule.modules.openidconnect.config.SingleSignOnConfig;
-import org.mule.modules.openidconnect.exception.HTTPConnectException;
+import org.mule.modules.openidconnect.exception.ExceptionHandler;
 import org.mule.modules.openidconnect.exception.MetaDataInitializationException;
 import org.mule.modules.openidconnect.exception.TokenValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import java.net.URI;
@@ -88,109 +88,150 @@ public class OpenIDConnectConnector {
         
     /**
      * Uses token introspection specified by OAUTH 2.0 to validate the token. It calls an api endpoint at the sso with
-     * the given bearer token from the request header. Intercepts the flow if token isn't valid, otherwise it continues
-     * processing. If claim extraction is activated, set of id-token claims is added to the flow variables.
+     * the given bearer token from the request header. Throws exception handled by ExceptionHandler if token isn't
+     * valid or if there are connection problems with the sso, otherwise it continues processing. If claim extraction
+     * is activated, set of id-token claims is added to the flow variables.
      * 
      * {@sample.xml ../../../doc/open-id-connect.xml.sample open-id-connect:online-token-validation}
-     * 
-     * @param callback injected by devkit
+     *
      * @param muleEvent injected by devkit
+     * @param tokenHeader Header with token to be validated ('Bearer TOKEN_STRING')
      * @param introspectionEndpoint The path of the introspection endpoint
      * @param clientId Any Client-ID from the SSO to prevent token scanning attacks
      * @param clientSecret The Secret of the given Client-ID
      * @param claimExtraction Creates the FlowVar tokenClaims which contains a map with all claims of the given token
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
      */
-    @Processor(intercepting = true)
-    public Object onlineTokenValidation(
-    		SourceCallback callback,
+    @OnException(handler = ExceptionHandler.class)
+    @Processor
+    public void onlineTokenValidation(
     		MuleEvent muleEvent,
+            @Default("#[message.inboundProperties.'Authorization']")String tokenHeader,
     		String introspectionEndpoint,
     		@FriendlyName("Client ID")String clientId,
             @Password String clientSecret,
-            @Default("false") boolean claimExtraction) throws HTTPConnectException {
+            @Default("false") boolean claimExtraction) throws Exception {
         MuleMessage muleMessage = muleEvent.getMessage();
         ssoConfig.setIntrospectionUri(UriBuilder.fromUri(ssoConfig.getSsoUri()).path(introspectionEndpoint).build());
         ssoConfig.setClientSecretBasic(new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret)));
-        try {
-            if (!ssoConfig.isInitialized()) ssoConfig.buildProviderMetadata();
-            String authHeader = muleMessage.getInboundProperty(HttpHeaders.AUTHORIZATION);
-    		logger.debug("Starting token introspection via identity provider");
-            Map<String, Object> claims = client.ssoTokenValidation(authHeader);
-			if (claimExtraction) {
-                logger.debug("Saving token claims as flow var tokenClaims");
-                muleMessage.setInvocationProperty("tokenClaims", claims);
-			}
-            muleMessage.setOutboundProperty(HttpHeaders.AUTHORIZATION, authHeader);
-            return callback.processEvent(muleEvent).getMessage().getPayload();
-		} catch (TokenValidationException e) {
-            logger.debug("Token validation failed. Reason: {}. Interrupting flow now", e.getMessage());
-            changeResponseStatus(muleMessage, Response.Status.UNAUTHORIZED);
-            muleMessage.setOutboundProperty(
-                    HttpHeaders.WWW_AUTHENTICATE, String.format("Error=\"%s\"", e.getMessage())
-            );
-            muleMessage.setPayload(e.getMessage());
-			return muleMessage.getPayload();
-		} catch (HTTPConnectException | MetaDataInitializationException e) {
-            logger.error("Identity provider error. Reason: {}", e.getMessage());
-            changeResponseStatus(muleMessage, Response.Status.BAD_GATEWAY);
-            muleMessage.setPayload("Could not connect to Identity Provider to validate token");
-            return muleMessage.getPayload();
-        } catch (Exception e) {
-            logger.error("Error during token introspection. Reason: {}. Interrupting flow now", e.getMessage());
-            changeResponseStatus(muleMessage, Response.Status.BAD_REQUEST);
-            muleMessage.setPayload(e.getMessage());
-			return muleMessage.getPayload();
-		}
+
+        if (!ssoConfig.isInitialized()) ssoConfig.buildProviderMetadata();
+        logger.debug("Starting token introspection via identity provider");
+        Map<String, Object> claims = client.ssoTokenValidation(tokenHeader);
+        if (claimExtraction) {
+            logger.debug("Saving token claims as flowVar tokenClaims");
+            muleMessage.setInvocationProperty("tokenClaims", claims);
+        }
     }
-    
-    
+
+
     /**
-     * Uses a internal class to validate the token. Intercepts the flow if token isn't valid, otherwise it continues
-     * processing. If claim extraction is activated, set of id-token claims is added to the flow variables.
-     * 
-     * {@sample.xml ../../../doc/open-id-connect.xml.sample open-id-connect:local-token-validation}
-     * 
-     * @param callback injected by devkit
+     * Uses token introspection specified by OAUTH 2.0 to validate the token. It calls an api endpoint at the sso with
+     * the given bearer token from the request header. If token is valid the connector checks if the userId from
+     * the token matches given userId. Throws exception handled by ExceptionHandler if token isn't valid or if there
+     * are connection problems with the sso, otherwise it continues processing. If claim extraction is activated, set
+     * of id-token claims is added to the flow variables.
+     *
+     * {@sample.xml ../../../doc/open-id-connect.xml.sample open-id-connect:online-token-validation-with-user-id}
+     *
      * @param muleEvent injected by devkit
+     * @param tokenHeader Header with token to be validated ('Bearer TOKEN_STRING')
+     * @param introspectionEndpoint The path of the introspection endpoint
+     * @param userId ID of the user the token was issued to
+     * @param clientId Any Client-ID from the SSO to prevent token scanning attacks
+     * @param clientSecret The Secret of the given Client-ID
      * @param claimExtraction Creates the FlowVar tokenClaims which contains a map with all claims of the given token
      * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
      */
-    @Processor(intercepting = true)
-    public Object localTokenValidation(
-            SourceCallback callback, MuleEvent muleEvent, @Default("false") boolean claimExtraction) {
+    @OnException(handler = ExceptionHandler.class)
+    @Processor
+    public void onlineTokenValidationWithUserId(
+            MuleEvent muleEvent,
+            @Default("#[message.inboundProperties.'Authorization']")String tokenHeader,
+            String introspectionEndpoint,
+            String userId,
+            @FriendlyName("Client ID")String clientId,
+            @Password String clientSecret,
+            @Default("false") boolean claimExtraction) throws Exception {
         MuleMessage muleMessage = muleEvent.getMessage();
-        try {
-            if (!ssoConfig.isInitialized()) ssoConfig.buildProviderMetadata();
-            String authHeader = muleMessage.getInboundProperty(HttpHeaders.AUTHORIZATION);
-            logger.debug("Starting token validation via connector");
-            Map<String, Object> claims = client.localTokenValidation(authHeader);
-            if (claimExtraction) {
-                logger.debug("Saving token claims as flow var tokenClaims");
-                muleMessage.setInvocationProperty("tokenClaims", claims);
-            }
-            muleMessage.setOutboundProperty(HttpHeaders.AUTHORIZATION, authHeader);
-            return callback.processEvent(muleEvent).getMessage().getPayload();
-        } catch (TokenValidationException e) {
-            logger.debug("Token validation failed. Reason: {}. Interrupting flow now", e.getMessage());
-            changeResponseStatus(muleMessage, Response.Status.UNAUTHORIZED);
-            muleMessage.setOutboundProperty(
-                    HttpHeaders.WWW_AUTHENTICATE, String.format("Error=\"%s\"", e.getMessage())
-            );
-            muleMessage.setPayload(e.getMessage());
-            return muleMessage.getPayload();
-        } catch (MetaDataInitializationException e) {
-            changeResponseStatus(muleMessage, Response.Status.BAD_GATEWAY);
-            muleMessage.setPayload(e.getMessage());
-            logger.error(e.getMessage());
-            return muleMessage.getPayload();
-        } catch (Exception e) {
-            logger.error("Error during token validation. Reason: {}. Interrupting flow now", e.getMessage());
-            changeResponseStatus(muleMessage, Response.Status.BAD_REQUEST);
-            muleMessage.setPayload(e.getMessage());
-            return muleMessage.getPayload();
+        ssoConfig.setIntrospectionUri(UriBuilder.fromUri(ssoConfig.getSsoUri()).path(introspectionEndpoint).build());
+        ssoConfig.setClientSecretBasic(new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret)));
+
+        if (!ssoConfig.isInitialized()) ssoConfig.buildProviderMetadata();
+        logger.debug("Starting token introspection via identity provider and matching userId");
+        Map<String, Object> claims = client.ssoTokenValidation(tokenHeader);
+        if(!claims.get("sub").equals(userId)) {
+            throw new TokenValidationException("UserId does not match the token UserId");
+        }
+        if (claimExtraction) {
+            logger.debug("Saving token claims as flowVar tokenClaims");
+            muleMessage.setInvocationProperty("tokenClaims", claims);
         }
     }
+
+
+
+    /**
+     * Uses a internal class to validate the token. Throws an exception handled by ExceptionHandler if validation fails.
+     * If claim extraction is activated, set of id-token claims is added to the flow variables.
+     *
+     * {@sample.xml ../../../doc/open-id-connect.xml.sample open-id-connect:local-token-validation}
+     *
+     * @param muleEvent The current MuleEvent Injected by the devkit
+     * @param tokenHeader Header with token to be validated ('Bearer TOKEN_STRING')
+     * @param claimExtraction Creates the FlowVar tokenClaims which contains a map with all claims of the given token
+     * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
+     */
+    @OnException(handler = ExceptionHandler.class)
+    @Processor
+    public void localTokenValidation(
+            MuleEvent muleEvent,
+            @Default("#[message.inboundProperties.'Authorization']")String tokenHeader,
+            @Default("false") boolean claimExtraction) throws Exception {
+        MuleMessage muleMessage = muleEvent.getMessage();
+        if (!ssoConfig.isInitialized()) ssoConfig.buildProviderMetadata();
+        logger.debug("Starting token validation via connector");
+        Map<String, Object> claims = client.localTokenValidation(tokenHeader);
+        if (claimExtraction) {
+            logger.debug("Saving token claims as flowVar tokenClaims");
+            muleMessage.setInvocationProperty("tokenClaims", claims);
+        }
+    }
+
+
+    /**
+     * Uses a internal class to validate the token and the UserID the token was given to. Throws an exception handled
+     * by ExceptionHandler if validation fails.
+     * If claim extraction is activated, set of id-token claims is added to the flow variables.
+     *
+     * {@sample.xml ../../../doc/open-id-connect.xml.sample open-id-connect:local-token-validation-with-user-id}
+     *
+     * @param muleEvent The current MuleEvent Injected by the devkit
+     * @param userId ID of the user the token was issued to
+     * @param tokenHeader Header with token to be validated ('Bearer TOKEN_STRING')
+     * @param claimExtraction Creates the FlowVar tokenClaims which contains a map with all claims of the given token
+     * @return The original payload if token is valid. If not, flow is intercepted and responses to the caller
+     */
+    @OnException(handler = ExceptionHandler.class)
+    @Processor
+    public void localTokenValidationWithUserId(
+            MuleEvent muleEvent,
+            String userId,
+            @Default("#[message.inboundProperties.'Authorization']")String tokenHeader,
+            @Default("false") boolean claimExtraction) throws Exception {
+        MuleMessage muleMessage = muleEvent.getMessage();
+        if (!ssoConfig.isInitialized()) ssoConfig.buildProviderMetadata();
+        logger.debug("Starting token validation with user id via connector");
+        Map<String, Object> claims = client.localTokenValidation(tokenHeader);
+        if(!claims.get("sub").equals(userId)) {
+            throw new TokenValidationException("UserId does not match the token UserId");
+        }
+        if (claimExtraction) {
+            logger.debug("Saving token claims as flowVar tokenClaims");
+            muleMessage.setInvocationProperty("tokenClaims", claims);
+        }
+    }
+
 
     /**
      * With this processor the connector works as a relying party specified by the OpenID Connect standard. Token

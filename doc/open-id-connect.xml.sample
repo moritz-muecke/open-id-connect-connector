@@ -1,10 +1,19 @@
 <!-- BEGIN_INCLUDE(open-id-connect:local-token-validation) -->
-	<open-id-connect:local-token-validation claimExtraction="false"/>
+	<open-id-connect:local-token-validation claimExtraction="false" tokenHeader=""/>
 <!-- END_INCLUDE(open-id-connect:local-token-validation) -->
+
+<!-- BEGIN_INCLUDE(open-id-connect:local-token-validation-with-user-id) -->
+	<open-id-connect:local-token-validation-with-user-id userId="" claimExtraction="false" tokenHeader=""/>
+<!-- END_INCLUDE(open-id-connect:local-token-validation-with-user-id) -->
 
 <!-- BEGIN_INCLUDE(open-id-connect:online-token-validation) -->
 	<open-id-connect:online-token-validation introspectionEndpoint="" clientId="" clientSecret="" claimExtraction="false"/>
 <!-- END_INCLUDE(open-id-connect:online-token-validation) -->
+
+<!-- BEGIN_INCLUDE(open-id-connect:online-token-validation-with-user-id) -->
+	<open-id-connect:online-token-validation-with-user-id introspectionEndpoint="" userId="" clientId="" clientSecret=""
+													  claimExtraction="false"/>
+<!-- END_INCLUDE(open-id-connect:online-token-validation-with-user-id) -->
 
 <!-- BEGIN_INCLUDE(open-id-connect:act-as-relying-party) -->
 	<open-id-connect:act-as-relying-party redirectUri="" clientId="" clientSecret="" instantRefresh="false"/>
