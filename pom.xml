@@ -19,10 +19,44 @@
         <licensePath>LICENSE.md</licensePath>
         <jdk.version>1.8</jdk.version>
         <devkit.studio.package.skip>false</devkit.studio.package.skip>
+        <tycho-version>0.25.0</tycho-version>
     </properties>
-    
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.eclipse.tycho.extras</groupId>
+                    <artifactId>tycho-p2-extras-plugin</artifactId>
+                    <version>0.25.0</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.eclipse.tycho.extras</groupId>
+                <artifactId>tycho-p2-extras-plugin</artifactId>
+                <version>${tycho-version}</version>
+                <executions>
+                    <execution>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>mirror</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <source>
+                        <repository>
+                            <url>https://extranet.aoe.com/artifactory/eclipse-update</url>
+                            <layout>p2</layout>
+                        </repository>
+                    </source>
+                    <destination>${project.build.directory}/update-site</destination>
+                    <compress>true</compress>
+                    <append>true</append>
+                    <latestVersionOnly>false</latestVersionOnly>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.gmavenplus</groupId>
                 <artifactId>gmavenplus-plugin</artifactId>
@@ -57,14 +91,22 @@
                 </configuration>
             </plugin>
         </plugins>
-    </build>
-    
+
+
+        <!-- To use the plugin goals in your POM or parent POM -->
+        </build>
     <repositories>
         <repository>
             <id>mulesoft-releases</id>
             <name>MuleSoft Releases Repository</name>
             <url>http://repository.mulesoft.org/releases/</url>
             <layout>default</layout>
+        </repository>
+
+        <repository>
+            <id>eclipse-indigo</id>
+            <layout>p2</layout>
+            <url>https://extranet.aoe.com/artifactory/eclipse-update-site</url>
         </repository>
     </repositories>
 
