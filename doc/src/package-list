@@ -11,4 +11,3 @@ org.mule.modules.openidconnect.generated.agents
 org.mule.modules.openidconnect.generated.config
 org.mule.modules.openidconnect.generated.devkit
 org.mule.modules.openidconnect.generated.processors
-org.mule.tooling.ui.contribution
