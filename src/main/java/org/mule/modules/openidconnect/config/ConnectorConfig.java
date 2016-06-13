@@ -46,7 +46,12 @@ public class ConnectorConfig {
 	}
 
 	public void setSsoPort(int ssoPort) {
-		this.ssoPort = ssoPort;
+		if (ssoPort == 80){
+			// the value -1 hides the port in the url if its the http standard port
+			this.ssoPort = -1;
+		} else {
+			this.ssoPort = ssoPort;
+		}
 	}
 
 	/**
