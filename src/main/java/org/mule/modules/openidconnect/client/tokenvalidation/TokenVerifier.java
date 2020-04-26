@@ -154,7 +154,10 @@ public class TokenVerifier {
 	public boolean isActive(AccessToken accessToken) throws ParseException {
         JWTClaimsSet claimsSet = parser.parseJWT(accessToken.getValue()).getJWTClaimsSet();
 		long expTime = claimsSet.getExpirationTime().getTime();
-		long notBeforeTime = claimsSet.getNotBeforeTime().getTime();
+		long notBeforeTime = 0;
+		if(claimsSet.getClaims().containsKey("nbf")){
+			notBeforeTime = claimsSet.getNotBeforeTime().getTime();
+		}
 		return System.currentTimeMillis() < expTime && System.currentTimeMillis() >= notBeforeTime;
 	}
 
